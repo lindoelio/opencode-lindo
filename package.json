@@ -2,6 +2,21 @@
   "name": "@lindoelio/opencode-lindo",
   "version": "0.1.0",
   "description": "Lindo Method: an evidence-driven autonomous tech lead for OpenCode",
+  "license": "MIT",
+  "author": "Lindoélio Lázaro <lindoelio@gmail.com>",
+  "keywords": [
+    "opencode",
+    "plugin",
+    "tech-lead",
+    "autonomous-agent",
+    "evidence",
+    "vertical-slice",
+    "decision-log"
+  ],
+  "homepage": "https://github.com/lindoelio/opencode-lindo#readme",
+  "bugs": {
+    "url": "https://github.com/lindoelio/opencode-lindo/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lindoelio/opencode-lindo.git"

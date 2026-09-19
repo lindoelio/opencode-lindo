@@ -13,7 +13,7 @@ describe("setup bootstrap", () => {
       setDefault: true,
       updateOnly: false,
       projectRoot: root,
-      pluginPackage: "@lindoelio/opencode-lindo@0.1.0",
+      pluginPackage: "@lindoelio/opencode-lindo@0.1.1",
       pluginOptions: { profile: "public", strictEvidence: true, projectState: ".lindo", model: { providerID: "opencode", modelID: "muse-spark-1.3", defaultVariant: "high" }, telemetry: false },
       includePluginOptions: false,
     });
@@ -23,7 +23,7 @@ describe("setup bootstrap", () => {
       setDefault: true,
       updateOnly: false,
       projectRoot: root,
-      pluginPackage: "@lindoelio/opencode-lindo@0.1.0",
+      pluginPackage: "@lindoelio/opencode-lindo@0.1.1",
       pluginOptions: { profile: "public", strictEvidence: true, projectState: ".lindo", model: { providerID: "opencode", modelID: "muse-spark-1.3", defaultVariant: "high" }, telemetry: false },
       includePluginOptions: false,
     });
@@ -36,7 +36,7 @@ describe("setup bootstrap", () => {
       setDefault: false,
       updateOnly: true,
       projectRoot: root,
-      pluginPackage: "@lindoelio/opencode-lindo@0.1.0",
+      pluginPackage: "@lindoelio/opencode-lindo@0.1.1",
       pluginOptions: {},
       includePluginOptions: false,
     });
@@ -51,7 +51,7 @@ describe("setup bootstrap", () => {
       setDefault: false,
       updateOnly: false,
       projectRoot: root,
-      pluginPackage: "@lindoelio/opencode-lindo@0.1.0",
+      pluginPackage: "@lindoelio/opencode-lindo@0.1.1",
       pluginOptions: {},
       includePluginOptions: false,
     };

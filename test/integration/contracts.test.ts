@@ -64,8 +64,9 @@ describe("plugin registration contracts", () => {
       return { dispose: async () => {} };
     };
     const addedSkills: string[] = [];
+    const skillDefs: Array<Record<string, unknown>> = [];
     (ctx as unknown as { skill: { transform: unknown } }).skill.transform = async (cb: (e: unknown) => void) => {
-      cb({ add(def: { id: string }) { addedSkills.push(def.id); }, list: () => [], get: () => undefined, update: () => {}, remove: () => {} });
+      cb({ add(def: { id: string }) { addedSkills.push(def.id); skillDefs.push(def as unknown as Record<string, unknown>); }, list: () => [], get: () => undefined, update: () => {}, remove: () => {} });
       return { dispose: async () => {} };
     };
     await registerTools(runtime as LindoRuntime);
@@ -75,6 +76,13 @@ describe("plugin registration contracts", () => {
     expect(addedTools.sort()).toEqual(["lindo_evaluate_gate", "lindo_handoff", "lindo_record_assumption", "lindo_record_decision", "lindo_request_approval", "lindo_state", "lindo_submit_evidence"]);
     expect(addedCommands).toHaveLength(14);
     expect(addedSkills).toHaveLength(14);
+    // Regression: Skill.Info requires absolute `path` (server disables the
+    // plugin on schema mismatch); `location` is not a valid key.
+    for (const def of skillDefs) {
+      expect(def["path"]).toMatch(/^\//);
+      expect(def).not.toHaveProperty("location");
+      expect(def["content"]).toContain("## ");
+    }
     // Execute every registered wrapper once (validation errors still cover the wiring).
     expect(toolExecutes).toHaveLength(7);
     for (const execute of toolExecutes) {

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-09-19
+
+### Fixed
+
+- Skill registration used a `location` key; `Skill.Info` requires an absolute
+  `path`. The server disabled the plugin after the transform failure. Skills now
+  resolve `assets/skills/<id>/SKILL.md` inside the installed package, with a
+  regression test asserting the registered shape.
+
 ## [0.1.0] - 2026-09-19
 
 ### Added

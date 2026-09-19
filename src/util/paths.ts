@@ -28,9 +28,21 @@ export function resolveInside(projectRoot: string, target: string): string {
 
 /** Refuse any symlink on intermediate components; resolves the real path and re-checks containment. */
 export async function assertNoSymlinkEscape(projectRoot: string, targetAbs: string): Promise<string> {
-  const root = path.resolve(projectRoot);
-  const parts = path.relative(root, targetAbs).split(path.sep);
-  if (parts.some((p) => p === "..")) throw new Error(`path escapes project root: ${targetAbs}`);
+  const requested = path.resolve(projectRoot);
+  // Resolve the root itself first: on macOS /tmp is a symlink to /private/tmp.
+  let root: string;
+  try {
+    root = await fs.promises.realpath(requested);
+  } catch {
+    root = requested;
+  }
+  // Rebase the target onto the resolved root so symlinked ancestors (e.g. /tmp)
+  // do not confuse containment checks.
+  const relToRequested = path.relative(requested, path.resolve(targetAbs));
+  if (relToRequested.startsWith("..") || path.isAbsolute(relToRequested)) {
+    throw new Error(`path escapes project root: ${targetAbs}`);
+  }
+  const parts = relToRequested.split(path.sep);
   let cursor = root;
   for (const part of parts) {
     if (!part || part === ".") continue;

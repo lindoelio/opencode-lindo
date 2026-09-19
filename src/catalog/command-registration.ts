@@ -86,7 +86,6 @@ export async function registerCommands(runtime: LindoRuntime): Promise<{ dispose
           // Loop commands: structured prompt to lindo in the current session.
           const body = cmd.prompt(stripCommandPrefix(args, cmd.name));
           await runtime.ctx.session.prompt({ sessionID, text: body } as never);
-          void sendSessionText;
         },
       });
     }

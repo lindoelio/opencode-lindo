@@ -90,7 +90,6 @@ export async function executeHandoff(runtime: LindoRuntime, rawInput: unknown, t
       ...s,
       handoffs: s.handoffs.map((h) => (h.id === input.handoffId ? { ...h, status: "completed" as const, result: input.result } : h)),
     }));
-    void runtime;
     return toolOk({ id: input.handoffId, revision: next.revision });
   }
   const existing = current.handoffs.find((h) => h.id === input.handoffId);

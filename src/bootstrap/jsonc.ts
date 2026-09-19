@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { parse, printParseErrorCode, modify, applyEdits } from "jsonc-parser";
+import { parse, modify, applyEdits } from "jsonc-parser";
 import { atomicWriteFile } from "../util/atomic-file.js";
 import { sha256Hex } from "../util/hash.js";
 
@@ -50,15 +50,19 @@ export async function planManagedFiles(projectRoot: string, templates: Map<strin
       continue;
     }
     const body = stripHeader(existing);
-    const expectedChecksum = checksumOf(body);
-    if (meta.checksum !== expectedChecksum && meta.checksum !== checksumOf(stripHeader(template))) {
-      // Drifted managed file: never overwrite silently.
-      files.push({ path: rel, action: "keep-drifted", reason: `managed file drifted (v${meta.version})` });
+    const templateBody = stripHeader(template);
+    if (body === templateBody) {
+      if (meta.checksum === checksumOf(body)) files.push({ path: rel, action: "keep", reason: "up to date" });
+      else files.push({ path: rel, action: "update-managed", reason: `repair header v${meta.version}` });
       continue;
     }
-    const newBody = stripHeader(template);
-    if (body === newBody) files.push({ path: rel, action: "keep", reason: "up to date" });
-    else files.push({ path: rel, action: "update-managed", reason: `update v${meta.version} -> v${version}` });
+    if (meta.checksum === checksumOf(body)) {
+      // Intact managed file; the template evolved.
+      files.push({ path: rel, action: "update-managed", reason: `update v${meta.version} -> v${version}` });
+      continue;
+    }
+    // Content matches neither the recorded checksum nor the template: user drift.
+    files.push({ path: rel, action: "keep-drifted", reason: `managed file drifted (v${meta.version})` });
   }
   return files;
 }
@@ -96,8 +100,6 @@ export async function mergeProjectConfig(input: {
     throw new Error(`opencode.jsonc has parse errors: ${JSON.stringify(errors).slice(0, 500)}`);
   }
   let after = before.trim().length === 0 ? "{\n}\n" : before;
-  const edits: unknown[] = [];
-  void edits;
   if (input.setDefault && (parsed as Record<string, unknown>)["default_agent"] !== "lindo") {
     after = applyJsoncEdit(after, ["default_agent"], "lindo");
   }
@@ -116,7 +118,6 @@ export async function mergeProjectConfig(input: {
       }
     }
   }
-  void printParseErrorCode;
   return { path: configPath, before, after, changed: after !== before };
 }
 
@@ -132,9 +133,10 @@ export async function backupFile(projectRoot: string, absPath: string): Promise<
   try {
     const content = await fs.promises.readFile(absPath, "utf8");
     await atomicWriteFile(dest, content);
+    return dest;
   } catch {
     // missing file: record intention only
     await atomicWriteFile(dest + ".missing", "");
+    return dest + ".missing";
   }
-  return dest;
 }

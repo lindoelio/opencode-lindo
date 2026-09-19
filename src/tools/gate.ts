@@ -28,7 +28,7 @@ export async function executeGate(runtime: LindoRuntime, rawInput: unknown, tool
   if (!current) throw new Error("lindo state not initialized");
   if (input.expectedRevision !== current.revision) throw new Error(`stale revision: expected ${input.expectedRevision}, actual ${current.revision}`);
 
-  const criteria = current.activeSlice?.acceptanceCriteria ?? current.gates.flatMap((g) => g.satisfied);
+  const criteria = current.activeSlice?.acceptanceCriteria ?? [];
   const findings = current.handoffs.flatMap((h) => {
     const r = h.result as { findings?: Array<{ severity: string }> } | undefined;
     return r?.findings ?? [];
@@ -37,7 +37,10 @@ export async function executeGate(runtime: LindoRuntime, rawInput: unknown, tool
   const highImpactLowConfidence = current.assumptions.some((a) => a.confidence === "low");
 
   let result;
-  if (input.gate === "ACCEPT" || input.gate === "VERIFY" || input.gate === "REVIEW") {
+  if (criteria.length === 0 && (input.gate === "VERIFY" || input.gate === "REVIEW" || input.gate === "ACCEPT")) {
+    // No slice, nothing to verify: fail honestly instead of passing vacuously.
+    result = { result: "FAIL" as const, satisfied: [] as string[], missing: ["active-slice"], failed: [] as string[], waivers: [] as string[], nextAction: "Define an active slice first" };
+  } else if (input.gate === "ACCEPT" || input.gate === "VERIFY" || input.gate === "REVIEW") {
     result = evaluateAcceptGate({
       criteria,
       evidence: current.evidence,
@@ -58,14 +61,17 @@ export async function executeGate(runtime: LindoRuntime, rawInput: unknown, tool
       result = { result: "PASS" as const, satisfied: ["accept-pass", "approvals-clear"], missing: [], failed: [], waivers: [], nextAction: "Promote same verified artifact" };
     }
   } else {
-    // INTENT/DISCOVERY/SLICE: structural checks.
-    const missing: string[] = [];
-    if (!current.outcome) missing.push("outcome");
-    if (input.gate !== "INTENT" && current.assumptions.length === 0 && current.decisions.length === 0) missing.push("discovery-records");
-    if (input.gate === "SLICE" && !current.activeSlice) missing.push("active-slice");
+    // INTENT/DISCOVERY/SLICE: structural checks with honest satisfied lists.
+    const checks: Array<{ id: string; ok: boolean }> = [{ id: "outcome", ok: current.outcome.length > 0 }];
+    if (input.gate !== "INTENT") {
+      checks.push({ id: "discovery-records", ok: current.assumptions.length + current.decisions.length > 0 });
+    }
+    if (input.gate === "SLICE") checks.push({ id: "active-slice", ok: current.activeSlice !== undefined });
+    const missing = checks.filter((c) => !c.ok).map((c) => c.id);
+    const satisfied = checks.filter((c) => c.ok).map((c) => c.id);
     result = missing.length === 0
-      ? { result: "PASS" as const, satisfied: [input.gate.toLowerCase()], missing: [], failed: [], waivers: [], nextAction: "Proceed" }
-      : { result: "FAIL" as const, satisfied: [], missing, failed: [], waivers: [], nextAction: `Provide: ${missing.join(", ")}` };
+      ? { result: "PASS" as const, satisfied, missing: [], failed: [], waivers: [], nextAction: "Proceed" }
+      : { result: "FAIL" as const, satisfied, missing, failed: [], waivers: [], nextAction: `Provide: ${missing.join(", ")}` };
   }
 
   const sessionId = String((tool as unknown as { sessionID?: string }).sessionID ?? "unknown");
@@ -76,6 +82,5 @@ export async function executeGate(runtime: LindoRuntime, rawInput: unknown, tool
     ...s,
     gates: [...s.gates, record],
   }));
-  void runtime;
   return toolOk({ ...result, revision: next.revision });
 }

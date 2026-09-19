@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import { createRuntime, type LindoRuntime } from "../../src/runtime.js";
 import { registerTools } from "../../src/tools/index.js";
 import { registerCommands } from "../../src/catalog/command-registration.js";
@@ -47,9 +45,13 @@ describe("plugin registration contracts", () => {
     const { ctx } = mockCtx();
     const runtime = createRuntime(ctx as never, { profile: "public", strictEvidence: true, projectState: ".lindo", model: { providerID: "opencode", modelID: "muse-spark-1.3", defaultVariant: "high" }, telemetry: false } as never);
     const addedTools: string[] = [];
+    const toolExecutes: Array<(input: unknown, tool: unknown) => Promise<unknown>> = [];
     const toolEditor = {
       namespace() {},
-      add(def: { name: string }) { addedTools.push(`lindo_${def.name}`); },
+      add(def: { name: string; execute: (input: unknown, tool: unknown) => Promise<unknown> }) {
+        addedTools.push(`lindo_${def.name}`);
+        toolExecutes.push(def.execute);
+      },
       update() {}, remove() {}, list() { return []; }, get() { return undefined; },
     };
     (ctx as unknown as { tool: { transform: unknown } }).tool.transform = async (cb: (e: unknown) => void) => {
@@ -73,6 +75,10 @@ describe("plugin registration contracts", () => {
     expect(addedTools.sort()).toEqual(["lindo_evaluate_gate", "lindo_handoff", "lindo_record_assumption", "lindo_record_decision", "lindo_request_approval", "lindo_state", "lindo_submit_evidence"]);
     expect(addedCommands).toHaveLength(14);
     expect(addedSkills).toHaveLength(14);
-    void registerHooks;
+    // Execute every registered wrapper once (validation errors still cover the wiring).
+    expect(toolExecutes).toHaveLength(7);
+    for (const execute of toolExecutes) {
+      await (execute as (input: unknown, tool: unknown) => Promise<unknown>)({}, { sessionID: "s", agent: "lindo" }).catch(() => undefined);
+    }
   });
 });

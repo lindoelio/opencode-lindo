@@ -27,7 +27,6 @@ export async function registerPromptHook(runtime: LindoRuntime): Promise<{ dispo
         };
       }
     }
-    void runtime;
   });
   return { dispose: () => reg.dispose() };
 }

@@ -18,7 +18,6 @@ export async function registerRetryHook(runtime: LindoRuntime): Promise<{ dispos
       return;
     }
     event.decision = { retry: false };
-    void runtime;
-  });
+    });
   return { dispose: () => reg.dispose() };
 }

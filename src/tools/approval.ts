@@ -71,6 +71,5 @@ export async function executeApproval(runtime: LindoRuntime, rawInput: unknown, 
     ...s,
     approvals: s.approvals.map((a) => (a.id === input.approvalId ? { ...a, status: input.decision, resolvedAt: new Date().toISOString() } : a)),
   }));
-  void runtime;
   return toolOk({ id: input.approvalId, status: input.decision, revision: next.revision });
 }

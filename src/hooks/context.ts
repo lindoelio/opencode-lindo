@@ -46,7 +46,6 @@ export async function registerContextHook(runtime: LindoRuntime): Promise<{ disp
       else if (agent.startsWith("lindo/") && agent !== "lindo/builder" && agent !== "lindo/designer") denyTools(["subagent"]);
       if (agent === "lindo/verifier" || agent === "lindo/security") denyTools(["subagent"]);
     }
-    void runtime;
   });
   return { dispose: () => reg.dispose() };
 }

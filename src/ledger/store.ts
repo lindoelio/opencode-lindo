@@ -6,7 +6,7 @@ import { eventId } from "../util/ids.js";
 import { eventsPath, lindoDir, resolveInside, statePath, assertNoSymlinkEscape } from "../util/paths.js";
 import { LindoEventSchema, LindoProjectStateSchema, type LindoEventV1, type LindoProjectStateV1 } from "../domain/schemas.js";
 import { computeEventHash, GENESIS_HASH, verifyChain } from "./events.js";
-import { REDACTED, redactUnknown } from "./redaction.js";
+import { redactUnknown } from "./redaction.js";
 
 const LOCKS = new Map<string, Promise<void>>();
 
@@ -168,7 +168,6 @@ export async function initializeState(input: {
     event.hash = computeEventHash({ ...event, hash: undefined as never } as Omit<LindoEventV1, "hash">);
     await appendFileSynced(eventsPath(root), JSON.stringify(event) + "\n");
     await atomicWriteFile(statePath(root), JSON.stringify(validated, null, 2));
-    void REDACTED;
     return validated;
   });
 }

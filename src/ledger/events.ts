@@ -18,8 +18,6 @@ export function verifyChain(events: LindoEventV1[]): { ok: boolean; badIndex?: n
     const e = events[i];
     if (!e) continue;
     if (e.previousHash !== prev) return { ok: false, badIndex: i };
-    const recomputed = computeEventHash({ ...e, hash: undefined as never } as Omit<LindoEventV1, "hash">);
-    void recomputed;
     // Recompute deterministically from stored fields:
     const expected = computeEventHash({
       schemaVersion: 1,

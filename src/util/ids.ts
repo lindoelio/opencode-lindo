@@ -1,13 +1,5 @@
 import { randomUUID } from "node:crypto";
 
-const counters = new Map<string, number>();
-
-export function nextSequenceKey(scope: string): number {
-  const current = counters.get(scope) ?? 0;
-  counters.set(scope, current + 1);
-  return current + 1;
-}
-
 export function engagementId(): string {
   return `ENG-${randomUUID().slice(0, 8).toUpperCase()}`;
 }

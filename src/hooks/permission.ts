@@ -50,7 +50,6 @@ export async function registerPermissionHook(runtime: LindoRuntime): Promise<{ d
       }
       if (!event.message) event.message = `Lindo: ${verdict.reason}`;
     }
-    void runtime;
   });
   return { dispose: () => reg.dispose() };
 }

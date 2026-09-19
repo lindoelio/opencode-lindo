@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
+import { homedir } from "node:os";
 import { loadTemplates } from "../catalog/agents.js";
-import { backupFile, mergeProjectConfig, withHeader } from "./jsonc.js";
+import { backupFile, isManaged, mergeProjectConfig, withHeader } from "./jsonc.js";
 import { resolveTargetAbs, type SetupOptions } from "./plan.js";
 import { atomicWriteFile } from "../util/atomic-file.js";
 
@@ -13,8 +14,7 @@ export interface ApplyResult {
 }
 
 export async function applySetupPlan(opts: SetupOptions): Promise<ApplyResult> {
-  const { default: osHome } = await import("node:os");
-  const root = opts.scope === "global" ? (opts.homeDir ?? osHome.homedir()) : opts.projectRoot;
+  const root = opts.scope === "global" ? (opts.homeDir ?? homedir()) : opts.projectRoot;
   const templates = await loadTemplates();
   const created: string[] = [];
   const updated: string[] = [];
@@ -30,7 +30,6 @@ export async function applySetupPlan(opts: SetupOptions): Promise<ApplyResult> {
     } catch {
       existing = null;
     }
-    const { isManaged } = await import("./jsonc.js");
     if (opts.updateOnly && existing !== null && isManaged(existing) === null) {
       skipped.push(rel);
       continue;

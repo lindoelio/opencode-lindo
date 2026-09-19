@@ -44,4 +44,31 @@ describe("setup bootstrap", () => {
     expect(content).toContain("USER EDITED");
     expect(result2.skipped.join()).toContain(".opencode/agents/lindo.md");
   });
+  it("updates intact managed files and skips config on global scope", async () => {
+    const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "lindo-setup-"));
+    const base = {
+      scope: "project" as const,
+      setDefault: false,
+      updateOnly: false,
+      projectRoot: root,
+      pluginPackage: "@lindoelio/opencode-lindo@0.1.0",
+      pluginOptions: {},
+      includePluginOptions: false,
+    };
+    await applySetupPlan(base);
+    // corrupt a managed header checksum: body matches the template, so apply repairs it (update path)
+    const agentPath2 = path.join(root, ".opencode", "agents", "lindo.md");
+    const applied = await fs.promises.readFile(agentPath2, "utf8");
+    expect(applied).toContain("LINDO-MANAGED");
+    await fs.promises.writeFile(agentPath2, applied.replace(/checksum=[0-9a-f]+/, "checksum=0000000000000000"));
+    const again = await applySetupPlan(base);
+    expect(again.updated.join()).toContain(".opencode/agents/lindo.md");
+    const repaired = await fs.promises.readFile(agentPath2, "utf8");
+    expect(repaired).not.toContain("0000000000000000");
+    // global scope never touches project config and honors homeDir
+    const home = await fs.promises.mkdtemp(path.join(os.tmpdir(), "lindo-home-"));
+    const global = await applySetupPlan({ ...base, scope: "global", homeDir: home });
+    expect(global.created.length).toBeGreaterThan(5);
+    expect(global.configChanged).toBe(false);
+  });
 });

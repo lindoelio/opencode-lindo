@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/lindoelio/opencode-lindo/schemas/event-v1.json",
+  "title": "LindoEventV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "sequence", "timestamp", "projectId", "engagementId", "sessionIdHash", "actor", "type", "payload", "previousHash", "hash"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string" },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "timestamp": { "type": "string" },
+    "projectId": { "type": "string" },
+    "engagementId": { "type": "string" },
+    "sessionIdHash": { "type": "string" },
+    "actor": { "type": "string" },
+    "type": { "type": "string" },
+    "payload": {},
+    "previousHash": { "type": "string" },
+    "hash": { "type": "string" }
+  }
+}

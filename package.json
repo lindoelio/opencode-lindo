@@ -1,0 +1,46 @@
+{
+  "name": "@lindoelio/opencode-lindo",
+  "version": "0.1.0",
+  "description": "Lindo Method: an evidence-driven autonomous tech lead for OpenCode",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lindoelio/opencode-lindo.git"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "assets",
+    "schemas",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@opencode/plugin": "2.0.10",
+    "jsonc-parser": "^3.3.1",
+    "zod": "^4.1.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run test/e2e",
+    "bench": "node --experimental-strip-types bench/runners/run.ts 2>/dev/null || npx tsx bench/runners/run.ts",
+    "pack:check": "npm pack --dry-run"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

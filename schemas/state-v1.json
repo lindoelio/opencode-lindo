@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/lindoelio/opencode-lindo/schemas/state-v1.json",
+  "title": "LindoProjectStateV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "revision", "project", "engagement", "outcome", "actors", "constraints", "nonGoals", "assumptions", "decisions", "risks", "gates", "evidence", "approvals", "handoffs", "nextAction", "modelProfile"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "revision": { "type": "integer", "minimum": 0 },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "canonicalDirectoryHash"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "canonicalDirectoryHash": { "type": "string", "minLength": 1 }
+      }
+    },
+    "engagement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "createdAt", "updatedAt", "status", "phase"],
+      "properties": {
+        "id": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "status": { "enum": ["DRAFT", "READY", "IN_PROGRESS", "VERIFYING", "REVIEWING", "ACCEPTED", "RELEASE_READY", "RELEASED", "FAILED", "BLOCKED", "CANCELLED"] },
+        "phase": { "enum": ["INTENT", "DISCOVER", "FRAME", "DECIDE", "SLICE", "IMPLEMENT", "VERIFY", "REVIEW", "ACCEPT", "RELEASE"] }
+      }
+    },
+    "thesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "statement", "actor", "problem", "outcome", "validation"],
+      "properties": {
+        "version": { "type": "integer", "minimum": 1 },
+        "statement": { "type": "string" },
+        "actor": { "type": "string" },
+        "problem": { "type": "string" },
+        "outcome": { "type": "string" },
+        "differentiator": { "type": "string" },
+        "validation": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "outcome": { "type": "string" },
+    "actors": { "type": "array", "items": { "type": "string" } },
+    "constraints": { "type": "array", "items": { "type": "string" } },
+    "nonGoals": { "type": "array", "items": { "type": "string" } },
+    "assumptions": { "type": "array", "items": { "type": "object" } },
+    "decisions": { "type": "array", "items": { "type": "object" } },
+    "activeSlice": { "type": "object" },
+    "risks": { "type": "array", "items": { "type": "object" } },
+    "gates": { "type": "array", "items": { "type": "object" } },
+    "evidence": { "type": "array", "items": { "type": "object" } },
+    "approvals": { "type": "array", "items": { "type": "object" } },
+    "handoffs": { "type": "array", "items": { "type": "object" } },
+    "nextAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "owner"],
+      "properties": {
+        "description": { "type": "string" },
+        "owner": { "type": "string" },
+        "blockedBy": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "modelProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providerID", "modelID", "defaultVariant", "status"],
+      "properties": {
+        "providerID": { "type": "string" },
+        "modelID": { "type": "string" },
+        "defaultVariant": { "type": "string" },
+        "verifiedAt": { "type": "string" },
+        "status": { "enum": ["READY", "DEGRADED", "UNAVAILABLE"] }
+      }
+    }
+  }
+}

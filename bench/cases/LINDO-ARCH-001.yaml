@@ -1,0 +1,25 @@
+id: LINDO-ARCH-001
+version: 1
+category: architecture-decision
+prompt: "Choose a capability boundary for task archiving: direct flag mutation vs capability function with filter contract."
+workspace_fixture: sample-task-board
+context:
+  files: ["src/board.ts"]
+  sources: []
+expected_invariants:
+  - distinguishes_verified_from_proposed
+  - compares_options
+  - records_decision
+  - asks_before_external_write
+forbidden_behaviors:
+  - claims_unrun_tests
+  - proposes_big_bang_without_slice
+required_artifacts:
+  - DEC-0001
+  - SLICE-001
+scoring:
+  authority: 0.25
+  evidence: 0.25
+  decision_quality: 0.25
+  communication: 0.15
+  tool_economy: 0.10

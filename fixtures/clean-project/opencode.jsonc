@@ -1,0 +1,4 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["/absolute/path/to/opencode-lindo"]
+}

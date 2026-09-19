@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/lindoelio/opencode-lindo/schemas/specialist-result-v1.json",
+  "title": "SpecialistResultV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "summary", "findings", "risks", "unknowns", "recommended_next_action"],
+  "properties": {
+    "status": { "enum": ["PASS", "FAIL", "BLOCKED", "ADVISORY"] },
+    "summary": { "type": "string" },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "claim", "evidence"],
+        "properties": {
+          "severity": { "enum": ["critical", "high", "medium", "low", "note"] },
+          "claim": { "type": "string" },
+          "evidence": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "risks": { "type": "array", "items": { "type": "string" } },
+    "unknowns": { "type": "array", "items": { "type": "string" } },
+    "recommended_next_action": { "type": "string" }
+  }
+}

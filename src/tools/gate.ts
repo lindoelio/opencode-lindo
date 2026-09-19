@@ -6,7 +6,7 @@ import type { ToolContext } from "@opencode/plugin/promise/tool";
 
 export const GATE_TOOL = {
   name: "evaluate_gate",
-  description: "Deterministically evaluate a gate from ledger state (result computed by plugin, not chosen by model)",
+  description: "Deterministically evaluate a gate from ledger state (result computed by plugin, not chosen by model). REVIEW and ACCEPT require a completed lindo/verifier handoff.",
   input: {
     type: "object",
     properties: {
@@ -35,9 +35,14 @@ export async function executeGate(runtime: LindoRuntime, rawInput: unknown, tool
   });
   const pendingApprovals = current.approvals.filter((a) => a.status === "pending").map((a) => a.id);
   const highImpactLowConfidence = current.assumptions.some((a) => a.confidence === "low");
+  // Independent review is mechanical, not advisory: REVIEW/ACCEPT require a
+  // completed lindo/verifier handoff. Self-verification never passes the gate.
+  const independentReview = current.handoffs.some((h) => h.role === "verifier" && h.status === "completed");
 
   let result;
-  if (criteria.length === 0 && (input.gate === "VERIFY" || input.gate === "REVIEW" || input.gate === "ACCEPT")) {
+  if ((input.gate === "REVIEW" || input.gate === "ACCEPT") && !independentReview) {
+    result = { result: "FAIL" as const, satisfied: [] as string[], missing: ["independent-verifier-review"], failed: [] as string[], waivers: [] as string[], nextAction: "Prepare a lindo/verifier handoff via lindo_handoff, complete it with evidence, then re-evaluate" };
+  } else if (criteria.length === 0 && (input.gate === "VERIFY" || input.gate === "REVIEW" || input.gate === "ACCEPT")) {
     // No slice, nothing to verify: fail honestly instead of passing vacuously.
     result = { result: "FAIL" as const, satisfied: [] as string[], missing: ["active-slice"], failed: [] as string[], waivers: [] as string[], nextAction: "Define an active slice first" };
   } else if (input.gate === "ACCEPT" || input.gate === "VERIFY" || input.gate === "REVIEW") {

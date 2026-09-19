@@ -28,7 +28,7 @@ export async function registerCommands(runtime: LindoRuntime): Promise<{ dispose
               setDefault: parsed.flags.has("set-default"),
               updateOnly: parsed.flags.has("update"),
               projectRoot: projectRootOf(runtime.ctx),
-              pluginPackage: "@lindoelio/opencode-lindo@0.1.1",
+              pluginPackage: "@lindoelio/opencode-lindo@0.1.2",
               pluginOptions: {
                 profile: runtime.options.profile,
                 strictEvidence: runtime.options.strictEvidence,
@@ -48,7 +48,7 @@ export async function registerCommands(runtime: LindoRuntime): Promise<{ dispose
                 setDefault: parsed.flags.has("set-default") ? true : setDefault,
                 updateOnly: parsed.flags.has("update"),
                 projectRoot: projectRootOf(runtime.ctx),
-                pluginPackage: "@lindoelio/opencode-lindo@0.1.1",
+                pluginPackage: "@lindoelio/opencode-lindo@0.1.2",
                 pluginOptions: {
                   profile: runtime.options.profile,
                   strictEvidence: runtime.options.strictEvidence,

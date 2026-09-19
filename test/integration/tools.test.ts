@@ -132,7 +132,22 @@ describe("lindo tools end to end", () => {
     const afterEvd = await readStateSafe(runtime);
     const verify = JSON.parse((await executeGate(runtime, { gate: "VERIFY", claim: "v", expectedRevision: afterEvd }, tool)).content);
     expect(verify.result).toBe("PASS");
-    const accept = JSON.parse((await executeGate(runtime, { gate: "ACCEPT", claim: "done", expectedRevision: verify.revision }, tool)).content);
+    // ACCEPT without independent review fails on the review requirement first
+    const acceptNoReview = JSON.parse((await executeGate(runtime, { gate: "ACCEPT", claim: "done", expectedRevision: verify.revision }, tool)).content);
+    expect(acceptNoReview.result).toBe("FAIL");
+    expect(acceptNoReview.missing).toContain("independent-verifier-review");
+    // REVIEW likewise requires the verifier handoff
+    const reviewNoReview = JSON.parse((await executeGate(runtime, { gate: "REVIEW", claim: "r", expectedRevision: acceptNoReview.revision }, tool)).content);
+    expect(reviewNoReview.result).toBe("FAIL");
+    expect(reviewNoReview.missing).toContain("independent-verifier-review");
+    // complete a verifier handoff: now ACCEPT reaches evidence/assumption checks
+    await executeHandoff(runtime, { action: "prepare", expectedRevision: reviewNoReview.revision, role: "verifier", objective: "review slice", context: [], allowedScope: ["src/a.ts"], prohibitedScope: [], questions: [], requiredEvidence: ["test output"], stopCondition: "findings listed" }, tool);
+    let rev = await readStateSafe(runtime);
+    await executeHandoff(runtime, { action: "complete", expectedRevision: rev, handoffId: "HND-0001", result: { status: "PASS", summary: "looks good", findings: [], risks: [], unknowns: [], recommended_next_action: "accept" } }, tool);
+    rev = await readStateSafe(runtime);
+    const review = JSON.parse((await executeGate(runtime, { gate: "REVIEW", claim: "r", expectedRevision: rev }, tool)).content);
+    expect(review.result).toBe("PASS");
+    const accept = JSON.parse((await executeGate(runtime, { gate: "ACCEPT", claim: "done", expectedRevision: review.revision }, tool)).content);
     expect(accept.result).toBe("FAIL");
     expect(accept.missing.join()).toContain("open-assumptions");
     const release = JSON.parse((await executeGate(runtime, { gate: "RELEASE", claim: "ship", expectedRevision: accept.revision }, tool)).content);
@@ -155,6 +170,11 @@ describe("lindo tools end to end", () => {
     }));
     await executeEvidence(runtime, { expectedRevision: planted.revision, criterionId: "AC-1", kind: "test", status: "pass", summary: "green", command: "npm test", observedAt: "t" }, tool);
     let rev = await readStateSafe(runtime);
+    // ACCEPT requires the verifier handoff even with green evidence
+    await executeHandoff(runtime, { action: "prepare", expectedRevision: rev, role: "verifier", objective: "review slice", context: [], allowedScope: ["src/a.ts"], prohibitedScope: [], questions: [], requiredEvidence: ["test output"], stopCondition: "done" }, tool);
+    rev = await readStateSafe(runtime);
+    await executeHandoff(runtime, { action: "complete", expectedRevision: rev, handoffId: "HND-0001", result: { status: "PASS", summary: "ok", findings: [], risks: [], unknowns: [], recommended_next_action: "accept" } }, tool);
+    rev = await readStateSafe(runtime);
     const accept = JSON.parse((await executeGate(runtime, { gate: "ACCEPT", claim: "done", expectedRevision: rev }, tool)).content);
     expect(accept.result).toBe("PASS");
     rev = accept.revision;

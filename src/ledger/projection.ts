@@ -10,11 +10,16 @@ export interface StateProjection {
   gate_status: Record<string, string>;
   critical_risks: string[];
   pending_approvals: string[];
+  handoffs_completed: string[];
+  handoffs_open: string[];
+  missing_independent_review: boolean;
   next_action: string;
   revision: number;
 }
 
 export function project(state: LindoProjectStateV1): StateProjection {
+  const completed = state.handoffs.filter((h) => h.status === "completed").map((h) => `${h.id}:${h.role}`);
+  const open = state.handoffs.filter((h) => h.status === "prepared").map((h) => `${h.id}:${h.role}`);
   return {
     phase: state.engagement.phase,
     outcome: state.outcome,
@@ -27,6 +32,9 @@ export function project(state: LindoProjectStateV1): StateProjection {
     gate_status: Object.fromEntries(state.gates.slice(-6).map((g) => [g.gate.toLowerCase(), g.result])),
     critical_risks: state.risks.filter((r) => r.severity === "critical" || r.severity === "high").map((r) => r.statement.slice(0, 200)),
     pending_approvals: state.approvals.filter((a) => a.status === "pending").map((a) => `${a.id}: ${a.requestedAction}`),
+    handoffs_completed: completed,
+    handoffs_open: open,
+    missing_independent_review: !state.handoffs.some((h) => h.role === "verifier" && h.status === "completed"),
     next_action: state.nextAction.description,
     revision: state.revision,
   };
@@ -43,6 +51,9 @@ export function renderProjectionYaml(p: StateProjection): string {
     `gate_status: ${JSON.stringify(p.gate_status)}`,
     `critical_risks: ${JSON.stringify(p.critical_risks)}`,
     `pending_approvals: ${JSON.stringify(p.pending_approvals)}`,
+    `handoffs_completed: [${p.handoffs_completed.join(", ")}]`,
+    `handoffs_open: [${p.handoffs_open.join(", ")}]`,
+    `missing_independent_review: ${p.missing_independent_review ? "true — REVIEW/ACCEPT will FAIL until a lindo/verifier handoff completes" : "false"}`,
     `next_action: ${JSON.stringify(p.next_action.slice(0, 300))}`,
     `revision: ${p.revision}`,
   ];

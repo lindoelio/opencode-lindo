@@ -17,7 +17,7 @@ ledger, and deterministic evidence gates.
 ```bash
 # 1. Connect a provider exposing the target model (TUI: /connect, then /models)
 # 2. Install a pinned revision
-opencode plugin add github:lindoelio/opencode-lindo#v0.1.1
+opencode plugin add github:lindoelio/opencode-lindo#v0.1.2
 
 # 3. Reload the local server
 opencode service restart

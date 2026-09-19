@@ -83,9 +83,17 @@ describe("domain extras", () => {
     expect(p.decisions).toEqual(["DEC-0001"]);
     expect(p.pending_approvals).toHaveLength(1);
     expect(p.critical_risks).toHaveLength(1);
+    expect(p.handoffs_completed).toEqual([]);
+    expect(p.handoffs_open).toEqual([]);
+    expect(p.missing_independent_review).toBe(true);
     const yaml = renderProjectionYaml(p);
     expect(yaml).toContain("phase: VERIFY");
     expect(yaml).toContain("revision: 3");
+    expect(yaml).toContain("missing_independent_review: true");
+    const reviewed = project({ ...baseState(), handoffs: [{ id: "HND-0001", role: "verifier", objective: "o", context: [], allowedScope: [], prohibitedScope: [], questions: [], requiredEvidence: [], stopCondition: "s", status: "completed" }] });
+    expect(reviewed.missing_independent_review).toBe(false);
+    expect(reviewed.handoffs_completed).toEqual(["HND-0001:verifier"]);
+    expect(renderProjectionYaml(reviewed)).toContain("missing_independent_review: false");
     const noSlice = project({ ...baseState(), activeSlice: undefined });
     expect(noSlice.active_slice).toBeUndefined();
   });

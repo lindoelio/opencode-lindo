@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { loadTemplates } from "../catalog/agents.js";
-import { isManaged, mergeProjectConfig, planManagedFiles, type SetupPlan } from "./jsonc.js";
+import { isManaged, mergeProjectConfig, planManagedFiles, readModelRemap, applyModelRemapToTemplates, type ModelRemap, type SetupPlan } from "./jsonc.js";
 
 export interface SetupOptions {
   scope: "project" | "global";
@@ -12,6 +12,13 @@ export interface SetupOptions {
   pluginOptions: Record<string, unknown>;
   includePluginOptions: boolean;
   homeDir?: string;
+  /** Explicit model remediation (from setup --remap-model); persisted to .lindo/setup.json on apply. */
+  modelRemap?: ModelRemap;
+}
+
+export async function resolveEffectiveRemap(root: string, explicit?: ModelRemap): Promise<ModelRemap | null> {
+  if (explicit) return explicit;
+  return readModelRemap(root);
 }
 
 export function targetRoot(opts: SetupOptions): string {
@@ -23,9 +30,12 @@ export async function buildSetupPlan(opts: SetupOptions): Promise<SetupPlan & { 
   const root = targetRoot(opts);
   const templates = await loadTemplates();
   const warnings: string[] = [];
+  const modelRemap = await resolveEffectiveRemap(root, opts.modelRemap);
+  const effective = modelRemap ? applyModelRemapToTemplates(templates, modelRemap) : templates;
+  if (modelRemap) warnings.push(`model remap active: ${modelRemap.from} -> ${modelRemap.to} (explicit choice recorded in .lindo/setup.json)`);
   // Remap agent targets for global scope.
   const remapped = new Map<string, string>();
-  for (const [rel, content] of templates) {
+  for (const [rel, content] of effective) {
     if (opts.scope === "global" && rel.startsWith(".opencode/agents/")) {
       warnings.push(`global scope remaps ${rel} under the global config dir`);
       remapped.set(rel, content);

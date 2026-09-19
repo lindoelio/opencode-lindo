@@ -140,3 +140,60 @@ export async function backupFile(projectRoot: string, absPath: string): Promise<
     return dest + ".missing";
   }
 }
+
+export interface ModelRemap {
+  from: string;
+  to: string;
+}
+
+const SETUP_STATE_FILE = ".lindo/setup.json";
+
+/**
+ * Explicit model remediation, persisted per setup root. Never inferred:
+ * a remap only exists after the user confirmed it (setup --remap-model).
+ */
+export async function readModelRemap(root: string): Promise<ModelRemap | null> {
+  try {
+    const raw = await fs.promises.readFile(path.join(root, SETUP_STATE_FILE), "utf8");
+    const parsed = JSON.parse(raw) as { version?: number; modelRemap?: ModelRemap };
+    if (parsed.version !== 1 || !parsed.modelRemap) return null;
+    const { from, to } = parsed.modelRemap;
+    if (typeof from !== "string" || typeof to !== "string" || !isProviderModelRef(to)) return null;
+    return { from, to };
+  } catch {
+    return null;
+  }
+}
+
+export async function writeModelRemap(root: string, remap: ModelRemap): Promise<string> {
+  if (!isProviderModelRef(remap.to)) throw new Error(`invalid model ref: ${remap.to} (expected provider/model)`);
+  const dest = path.join(root, SETUP_STATE_FILE);
+  await atomicWriteFile(dest, JSON.stringify({ version: 1, modelRemap: remap, updatedAt: new Date().toISOString() }, null, 2) + "\n");
+  return dest;
+}
+
+/** `provider/model` without variant. Variants (`#low`) stay on the agent lines. */
+export function isProviderModelRef(ref: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9_.-]*\/[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(ref);
+}
+
+/**
+ * Rewrite `model: <from>#<variant>` frontmatter lines to `<to>#<variant>`.
+ * Frontmatter stays at byte 0; only model lines change.
+ */
+export function applyModelRemapToTemplates(templates: Map<string, string>, remap: ModelRemap): Map<string, string> {
+  const out = new Map<string, string>();
+  const pattern = new RegExp(`^(model:\\s*)${escapeRegExp(remap.from)}(#[A-Za-z0-9_-]+)?\\s*$`, "m");
+  for (const [rel, content] of templates) {
+    if (!rel.endsWith(".md")) {
+      out.set(rel, content);
+      continue;
+    }
+    out.set(rel, content.replace(pattern, (_m, prefix: string, variant: string | undefined) => `${prefix}${remap.to}${variant ?? ""}`));
+  }
+  return out;
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

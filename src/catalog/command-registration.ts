@@ -1,6 +1,8 @@
 import { LINDO_COMMANDS, parseCommandArgs } from "./commands.js";
+import { MODEL_PROFILE } from "./model-profile.js";
 import { applySetupPlan } from "../bootstrap/apply.js";
 import { buildSetupPlan, renderPlanText } from "../bootstrap/plan.js";
+import { isProviderModelRef } from "../bootstrap/jsonc.js";
 import { runDoctor, renderDoctorReport } from "../doctor/checks.js";
 import { readState } from "../ledger/store.js";
 import { project } from "../ledger/projection.js";
@@ -23,12 +25,21 @@ export async function registerCommands(runtime: LindoRuntime): Promise<{ dispose
             const parsed = parseCommandArgs(stripCommandPrefix(args, "lindo/setup"));
             const scope = parsed.get("scope") === "global" ? "global" : "project";
             const setDefault = parsed.flags.has("set-default") || (!parsed.flags.has("no-default") && scope === "project" && parsed.flags.has("apply"));
+            const remapTo = parsed.get("remap-model");
+            let modelRemap: { from: string; to: string } | undefined;
+            if (remapTo !== undefined) {
+              if (!isProviderModelRef(remapTo)) {
+                await sendSessionText(runtime, sessionID, `Invalid --remap-model '${remapTo}': expected provider/model (no variant). Nothing was written.`);
+                return;
+              }
+              modelRemap = { from: `${MODEL_PROFILE.providerID}/${MODEL_PROFILE.modelID}`, to: remapTo };
+            }
             const plan = await buildSetupPlan({
               scope,
               setDefault: parsed.flags.has("set-default"),
               updateOnly: parsed.flags.has("update"),
               projectRoot: projectRootOf(runtime.ctx),
-              pluginPackage: "@lindoelio/opencode-lindo@0.1.2",
+              pluginPackage: "@lindoelio/opencode-lindo@0.1.3",
               pluginOptions: {
                 profile: runtime.options.profile,
                 strictEvidence: runtime.options.strictEvidence,
@@ -37,6 +48,7 @@ export async function registerCommands(runtime: LindoRuntime): Promise<{ dispose
                 telemetry: false,
               },
               includePluginOptions: true,
+              modelRemap,
             });
             if (parsed.flags.has("apply")) {
               if (scope === "global" && !parsed.flags.has("confirm")) {
@@ -48,7 +60,7 @@ export async function registerCommands(runtime: LindoRuntime): Promise<{ dispose
                 setDefault: parsed.flags.has("set-default") ? true : setDefault,
                 updateOnly: parsed.flags.has("update"),
                 projectRoot: projectRootOf(runtime.ctx),
-                pluginPackage: "@lindoelio/opencode-lindo@0.1.2",
+                pluginPackage: "@lindoelio/opencode-lindo@0.1.3",
                 pluginOptions: {
                   profile: runtime.options.profile,
                   strictEvidence: runtime.options.strictEvidence,
@@ -57,6 +69,7 @@ export async function registerCommands(runtime: LindoRuntime): Promise<{ dispose
                   telemetry: false,
                 },
                 includePluginOptions: true,
+                modelRemap,
               });
               await sendSessionText(runtime, sessionID, `Lindo setup applied.\nCreated: ${result.created.join(", ") || "(none)"}\nUpdated: ${result.updated.join(", ") || "(none)"}\nSkipped (user content): ${result.skipped.join(", ") || "(none)"}\nBackups: ${result.backups.length}\nConfig changed: ${result.configChanged}\n\nReload OpenCode and run /lindo/doctor.`);
               return;

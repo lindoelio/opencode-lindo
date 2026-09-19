@@ -80,6 +80,16 @@ describe("doctor", () => {
     const r3 = await runDoctor(noTools);
     expect(r3.checks.find((c) => c.name === "Tool registration")?.status).toBe("FAIL");
   });
+  it("proposes explicit remediation when a same-family model exists", async () => {
+    const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "lindo-doctor-"));
+    const runtime = createRuntime(baseCtx(root, { model: { list: async () => [{ providerID: "opencode-go", id: "muse-spark-1.3-contributor" }] } }), OPTS);
+    const report = await runDoctor(runtime);
+    expect(report.checks.find((c) => c.name === "Model")?.status).toBe("DEGRADED");
+    expect(report.remediation?.from).toBe("opencode/muse-spark-1.3");
+    expect(report.remediation?.candidate).toBe("opencode-go/muse-spark-1.3-contributor");
+    expect(report.remediation?.instruction).toContain("--remap-model");
+    expect(renderDoctorReport(report)).toContain("Model remediation (explicit confirmation required");
+  });
 });
 
 describe("command handlers", () => {
@@ -131,6 +141,19 @@ describe("command handlers", () => {
     const status = defs.find((d) => d.name === "lindo/status")!;
     await status.execute({ sessionID: "s", prompt: { text: "/lindo/status" }, delivery: "steer" } as never);
     expect(sent.join("\n")).toContain("Verdict: INTENT / DRAFT");
+  });
+  it("setup --remap-model validates and persists explicit remediation", async () => {
+    const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "lindo-cmd-"));
+    const { defs, sent } = await captureCommands(root);
+    const setup = defs.find((d) => d.name === "lindo/setup")!;
+    await setup.execute({ sessionID: "s", prompt: { text: "/lindo/setup --apply --remap-model 'bad ref!'" }, delivery: "steer" } as never);
+    expect(sent.join("\n")).toContain("Invalid --remap-model");
+    await setup.execute({ sessionID: "s", prompt: { text: "/lindo/setup --apply --remap-model opencode-go/muse-spark-1.3-contributor" }, delivery: "steer" } as never);
+    expect(sent.join("\n")).toContain("Lindo setup applied");
+    const agent = await fs.promises.readFile(path.join(root, ".opencode", "agents", "lindo", "explorer.md"), "utf8");
+    expect(agent).toContain("model: opencode-go/muse-spark-1.3-contributor#low");
+    const { readModelRemap } = await import("../../src/bootstrap/jsonc.js");
+    expect(await readModelRemap(root)).toEqual({ from: "opencode/muse-spark-1.3", to: "opencode-go/muse-spark-1.3-contributor" });
   });
   it("global setup without confirm refuses to write, doctor command runs", async () => {
     const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "lindo-cmd-"));

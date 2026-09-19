@@ -7,15 +7,25 @@ export interface DoctorCheck {
   detail: string;
 }
 
+export interface ModelRemediation {
+  /** Pinned ref missing from the catalog, e.g. `opencode/muse-spark-1.3`. */
+  from: string;
+  /** Working equivalent found in the catalog, e.g. `opencode-go/muse-spark-1.3-contributor`. */
+  candidate: string;
+  /** Exact command applying it after explicit confirmation. */
+  instruction: string;
+}
+
 export interface DoctorReport {
   verdict: "PASS" | "DEGRADED" | "FAIL";
   checks: DoctorCheck[];
   recommendedAction: string;
   opencodeVersion: string;
   pluginVersion: string;
+  remediation?: ModelRemediation;
 }
 
-const PLUGIN_VERSION = "0.1.0";
+const PLUGIN_VERSION = "0.1.3";
 
 export async function runDoctor(runtime: LindoRuntime): Promise<DoctorReport> {
   const checks: DoctorCheck[] = [];
@@ -31,19 +41,45 @@ export async function runDoctor(runtime: LindoRuntime): Promise<DoctorReport> {
   // 2. Plugin/API version
   checks.push({ name: "Plugin", status: "PASS", detail: PLUGIN_VERSION });
 
-  // 3-4. Model catalog + variants
+  // 3-4. Model catalog + variants. A missing pinned model is DEGRADED (not
+  // FAIL) when a same-family equivalent exists: doctor proposes an explicit
+  // remediation, never a silent fallback.
+  let remediation: ModelRemediation | undefined;
   try {
     const models = (await runtime.ctx.model.list()) as unknown as Array<{ providerID?: string; provider?: string; id?: string; modelID?: string }>;
-    const found = models.some((m: any) => {
+    const refOf = (m: { providerID?: string; provider?: string; id?: string; modelID?: string }): string => {
       const p = String(m.providerID ?? m.provider ?? "");
       const id = String((m as Record<string, unknown>)["id"] ?? (m as Record<string, unknown>)["modelID"] ?? "");
-      return p === MODEL_PROFILE.providerID && id === MODEL_PROFILE.modelID;
-    });
-    checks.push({
-      name: "Model",
-      status: found ? "PASS" : "FAIL",
-      detail: found ? `${MODEL_PROFILE.providerID}/${MODEL_PROFILE.modelID}` : `${MODEL_PROFILE.providerID}/${MODEL_PROFILE.modelID} not in active catalog — connect via /connect then /models`,
-    });
+      return `${p}/${id}`;
+    };
+    const found = models.some((m: any) => refOf(m) === `${MODEL_PROFILE.providerID}/${MODEL_PROFILE.modelID}`);
+    if (found) {
+      checks.push({
+        name: "Model",
+        status: "PASS",
+        detail: `${MODEL_PROFILE.providerID}/${MODEL_PROFILE.modelID}`,
+      });
+    } else {
+      const candidate = models.map(refOf).find((ref) => ref.includes(MODEL_PROFILE.modelID) && ref !== `${MODEL_PROFILE.providerID}/${MODEL_PROFILE.modelID}`);
+      if (candidate) {
+        remediation = {
+          from: `${MODEL_PROFILE.providerID}/${MODEL_PROFILE.modelID}`,
+          candidate,
+          instruction: `/lindo/setup --apply --remap-model '${candidate}'`,
+        };
+        checks.push({
+          name: "Model",
+          status: "DEGRADED",
+          detail: `pinned ${MODEL_PROFILE.providerID}/${MODEL_PROFILE.modelID} unavailable; equivalent ${candidate} found — confirm remediation: ${remediation.instruction}`,
+        });
+      } else {
+        checks.push({
+          name: "Model",
+          status: "FAIL",
+          detail: `${MODEL_PROFILE.providerID}/${MODEL_PROFILE.modelID} not in active catalog — connect via /connect then /models`,
+        });
+      }
+    }
   } catch (err) {
     checks.push({ name: "Model", status: "FAIL", detail: `catalog read failed: ${(err as Error).message}` });
   }
@@ -102,6 +138,7 @@ export async function runDoctor(runtime: LindoRuntime): Promise<DoctorReport> {
     recommendedAction: verdict === "PASS" ? "Ready. Start with /lindo/start." : "Resolve FAIL lines above; DEGRADED reasoning means use high/xhigh and rerun max preflight after provider update.",
     opencodeVersion,
     pluginVersion: PLUGIN_VERSION,
+    ...(remediation ? { remediation } : {}),
   };
 }
 
@@ -113,6 +150,15 @@ export function renderDoctorReport(report: DoctorReport): string {
     `Plugin: ${report.checks.find((c) => c.name === "Plugin")?.status} (${report.pluginVersion})`,
     ...report.checks.slice(2).map((c) => `${c.name}: ${c.status} (${c.detail.slice(0, 160)})`),
     ``,
+    ...(report.remediation
+      ? [
+          `Model remediation (explicit confirmation required, never automatic):`,
+          `  pinned missing: ${report.remediation.from}`,
+          `  working equivalent: ${report.remediation.candidate}`,
+          `  apply with: ${report.remediation.instruction}`,
+          ``,
+        ]
+      : []),
     `Recommended action: ${report.recommendedAction}`,
   ];
   return lines.join("\n");

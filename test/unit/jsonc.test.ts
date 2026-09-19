@@ -100,4 +100,46 @@ describe("bootstrap jsonc", () => {
     expect(resolveTargetAbs(root, ".opencode/agents/lindo.md", "project")).toBe(path.join(root, ".opencode/agents/lindo.md"));
     expect(await fileIsManagedOrMissing(path.join(root, "missing.md"))).toBe(true);
   });
+  it("remaps pinned model refs only on explicit choice", async () => {
+    const { applyModelRemapToTemplates, isProviderModelRef, readModelRemap, writeModelRemap } = await import("../../src/bootstrap/jsonc.js");
+    expect(isProviderModelRef("opencode-go/muse-spark-1.3-contributor")).toBe(true);
+    expect(isProviderModelRef("opencode/muse-spark-1.3#low")).toBe(false);
+    expect(isProviderModelRef("novariant")).toBe(false);
+    const remap = { from: "opencode/muse-spark-1.3", to: "opencode-go/muse-spark-1.3-contributor" };
+    const templates = new Map([
+      [".opencode/agents/lindo.md", "---\nmodel: opencode/muse-spark-1.3#high\n---\nbody\n"],
+      [".opencode/agents/lindo/explorer.md", "---\nmodel: opencode/muse-spark-1.3#low\n---\nbody\n"],
+      [".lindo/README.md", "# readme without model\n"],
+    ]);
+    const out = applyModelRemapToTemplates(templates, remap);
+    expect(out.get(".opencode/agents/lindo.md")).toContain("model: opencode-go/muse-spark-1.3-contributor#high");
+    expect(out.get(".opencode/agents/lindo/explorer.md")).toContain("model: opencode-go/muse-spark-1.3-contributor#low");
+    expect(out.get(".lindo/README.md")).toBe("# readme without model\n");
+    expect(out.get(".opencode/agents/lindo.md")!.startsWith("---\n")).toBe(true);
+    // persistence round-trips explicit choices; garbage and absence read as null
+    const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "lindo-remap-"));
+    expect(await readModelRemap(root)).toBeNull();
+    await writeModelRemap(root, remap);
+    expect(await readModelRemap(root)).toEqual(remap);
+    await expect(writeModelRemap(root, { from: "a/b", to: "bad ref!" })).rejects.toThrow();
+    await fs.promises.writeFile(path.join(root, ".lindo", "setup.json"), "{ broken");
+    expect(await readModelRemap(root)).toBeNull();
+  });
+  it("plans and applies with a persisted remap without drifting", async () => {
+    const { writeModelRemap } = await import("../../src/bootstrap/jsonc.js");
+    const { buildSetupPlan } = await import("../../src/bootstrap/plan.js");
+    const { applySetupPlan } = await import("../../src/bootstrap/apply.js");
+    const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "lindo-remap-"));
+    const remap = { from: "opencode/muse-spark-1.3", to: "opencode-go/muse-spark-1.3-contributor" };
+    const plan = await buildSetupPlan({ scope: "project", setDefault: false, updateOnly: false, projectRoot: root, pluginPackage: "pkg@1", pluginOptions: {}, includePluginOptions: false, modelRemap: remap });
+    expect(plan.warnings.join()).toContain("model remap active");
+    const applied = await applySetupPlan({ scope: "project", setDefault: false, updateOnly: false, projectRoot: root, pluginPackage: "pkg@1", pluginOptions: {}, includePluginOptions: false, modelRemap: remap });
+    expect(applied.created.join()).toContain(".opencode/agents/lindo.md");
+    const agent = await fs.promises.readFile(path.join(root, ".opencode", "agents", "lindo.md"), "utf8");
+    expect(agent).toContain("model: opencode-go/muse-spark-1.3-contributor#high");
+    expect(agent.startsWith("---\n")).toBe(true);
+    // second plan without the flag reuses the persisted choice and reports keep
+    const again = await buildSetupPlan({ scope: "project", setDefault: false, updateOnly: false, projectRoot: root, pluginPackage: "pkg@1", pluginOptions: {}, includePluginOptions: false });
+    expect(again.files.find((f) => f.path === ".opencode/agents/lindo.md")?.action).toBe("keep");
+  });
 });

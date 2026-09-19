@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import { homedir } from "node:os";
 import { loadTemplates } from "../catalog/agents.js";
-import { backupFile, isManaged, mergeProjectConfig, withHeader } from "./jsonc.js";
-import { resolveTargetAbs, type SetupOptions } from "./plan.js";
+import { backupFile, isManaged, mergeProjectConfig, withHeader, applyModelRemapToTemplates, writeModelRemap } from "./jsonc.js";
+import { resolveTargetAbs, resolveEffectiveRemap, type SetupOptions } from "./plan.js";
 import { atomicWriteFile } from "../util/atomic-file.js";
 
 export interface ApplyResult {
@@ -16,12 +16,16 @@ export interface ApplyResult {
 export async function applySetupPlan(opts: SetupOptions): Promise<ApplyResult> {
   const root = opts.scope === "global" ? (opts.homeDir ?? homedir()) : opts.projectRoot;
   const templates = await loadTemplates();
+  // Persist an explicit remediation choice before writing, so plans stay consistent.
+  if (opts.modelRemap) await writeModelRemap(root, opts.modelRemap);
+  const modelRemap = await resolveEffectiveRemap(root, opts.modelRemap);
+  const effective = modelRemap ? applyModelRemapToTemplates(templates, modelRemap) : templates;
   const created: string[] = [];
   const updated: string[] = [];
   const skipped: string[] = [];
   const backups: string[] = [];
 
-  for (const [rel, template] of templates) {
+  for (const [rel, template] of effective) {
     // --update: only touch managed-undrifted files.
     const abs = resolveTargetAbs(root, rel, opts.scope);
     let existing: string | null = null;

@@ -67,7 +67,7 @@ export const LINDO_COMMANDS: LindoCommand[] = [
   {
     name: "lindo/setup",
     description: "Plan/apply/update native agent files and project config",
-    prompt: p(`You are Lindo setup. Modes: --plan (default, no writes) shows file/config diffs; --apply applies after explicit confirmation; --scope project (default .opencode/agents/) or global (~/.config/opencode/agents/, extra confirmation); --set-default sets default_agent lindo; --no-default installs roster without changing default; --update refreshes only managed-undrifted files; --remove plans removal, never deletes user-modified files. Preserve comments/order/keys in opencode.jsonc; backup to .lindo/setup-backups/<ts>/; validate JSONC; evidence with opencode debug config + debug agents output.`),
+    prompt: p(`You are Lindo setup. Modes: --plan (default, no writes) shows file/config diffs; --apply applies after explicit confirmation; --scope project (default .opencode/agents/) or global (~/.config/opencode/agents/, extra confirmation); --set-default sets default_agent lindo; --no-default installs roster without changing default; --update refreshes only managed-undrifted files; --remove plans removal, never deletes user-modified files; --remap-model <provider/model> rewrites pinned agent model refs to a working equivalent after explicit confirmation (recorded in .lindo/setup.json, never silent). Preserve comments/order/keys in opencode.jsonc; backup to .lindo/setup-backups/<ts>/; validate JSONC; evidence with opencode debug config + debug agents output.`),
   },
   {
     name: "lindo/doctor",
@@ -97,7 +97,7 @@ export function parseCommandArgs(raw: string): { flags: Set<string>; positional:
       } else {
         const k = t.slice(2);
         const next = tokens[i + 1];
-        if (next && !next.startsWith("--") && (k === "scope" || k === "accept")) {
+        if (next && !next.startsWith("--") && (k === "scope" || k === "accept" || k === "remap-model")) {
           values.set(k, next.replace(/^["']|["']$/g, ""));
           flags.add(k);
           i++;

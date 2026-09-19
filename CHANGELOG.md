@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-09-19
+
+### Added
+
+- Explicit model remediation: `/lindo/doctor` reports `DEGRADED` (instead of a
+  bare `FAIL`) when the pinned model is missing but a same-family equivalent
+  exists, with an exact `remediation` instruction. `/lindo/setup --apply
+  --remap-model <provider/model>` rewrites pinned agent `model:` refs
+  (variants preserved, frontmatter intact) after explicit confirmation and
+  records the choice in `.lindo/setup.json`, which later plans reapply so
+  updates never silently revert it. No silent fallback, ever.
+
 ## [0.1.2] - 2026-09-19
 
 ### Added

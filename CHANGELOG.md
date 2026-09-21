@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-09-21
+
+### Changed (breaking)
+
+- **YOLO is the default.** `ALLOW` is now the baseline for external writes,
+  deploys, releases, tags, publication, production/billing/permission changes,
+  financial/legal actions and destructive operations. The permission hook no
+  longer elevates `allow` to `ask`. Authorization prompts happen only when a
+  user-registered guardrail matches (`autonomy.askBefore` or `/lindo/guard`) or
+  when `autonomy.mode: "guarded"` is explicitly set.
+- **No concurrency cap.** The `max 3 concurrent handoffs` guard is removed;
+  `lindo` is instructed to delegate by default and run independent handoffs in
+  parallel. SPEC concurrency limits (default 2 / max 3) are gone.
+- **Nested helper agents allowed.** Specialists may launch built-in OpenCode
+  helper agents (`explore`, `general`, …). Only `lindo` may create `lindo/*`
+  specialists; that boundary remains a final `DENY`.
+- `.env`/credentials reads are `ALLOW` by default (redaction before persistence
+  is unchanged).
+- Agent templates no longer carry `ask` permissions for `git push`, `git tag`,
+  `external_directory`, or `.env` reads.
+
+### Added
+
+- `autonomy` plugin option: `{ mode: "yolo" | "guarded", askBefore: string[] }`.
+- `guardrails` + `autonomyMode` in project state, `lindo_state` action
+  `guard` (add/remove/clear/mode), and `/lindo/guard` command.
+- `matchesGuardrail` (plain text or regex, case-insensitive) in the Authority
+  Matrix; `classifyGuarded` preserves the legacy opt-in behavior.
+- Doctor reports the effective autonomy policy.
+- 15th command (`/lindo/guard`); bench cases and rubrics updated for the
+  autonomy-first policy.
+
+### Kept
+
+- Integrity `DENY` rules remain final: secret exposure, unproven completion
+  claims, instructions from untrusted content, and `lindo/*` orchestration by
+  non-orchestrators.
+
 ## [0.1.3] - 2026-09-19
 
 ### Added

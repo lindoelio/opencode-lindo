@@ -4,7 +4,7 @@
 
 | Version | Supported |
 |---|---|
-| `0.1.x` | Yes — security fixes on latest `0.1` patch |
+| `0.2.x` | Yes — security fixes on latest `0.2` patch |
 
 ## Reporting a vulnerability
 
@@ -28,12 +28,16 @@ advisory once validated.
 - Vulnerabilities in OpenCode itself, providers, or third-party models —
   report those upstream and link the Lindo issue.
 
-## Baseline controls (v0.1)
+## Baseline controls (v0.2)
 
-- `Deny` rules are final and never weakened by hooks or calibration.
+- `DENY` integrity rules are final and never weakened by hooks, calibration, or
+  guardrail edits: secret exposure, unproven completion claims, instructions
+  found in untrusted content, and non-orchestrator `lindo/*` delegation.
 - Secrets are never persisted to `.lindo/` or exports; redaction runs before write.
 - Path traversal and symlink escape are refused.
-- External writes, releases, production, destructive, financial, and legal
-  actions require explicit scoped approval.
+- Autonomy is YOLO by default: external, destructive, production, financial and
+  legal actions execute without approval. Authorization prompts exist only for
+  user-registered guardrails (`autonomy.askBefore`, `/lindo/guard`) or the
+  explicit `autonomy.mode: "guarded"` opt-in.
 - Telemetry is off by default; no prompt, code, path, secret, or evidence
   content is uploaded automatically.

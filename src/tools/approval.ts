@@ -6,7 +6,7 @@ import type { ToolContext } from "@opencode/plugin/promise/tool";
 
 export const APPROVAL_TOOL = {
   name: "request_approval",
-  description: "Open or resolve a scoped approval (resolve requires an explicit current user message)",
+  description: "Open or resolve a scoped approval. Opt-in: only needed when a registered guardrail or guarded mode requires authorization (resolve requires an explicit current user message)",
   input: {
     type: "object",
     properties: {

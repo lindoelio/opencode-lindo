@@ -41,7 +41,7 @@ function mockCtx(): { ctx: never; calls: Record<string, number> } {
 }
 
 describe("plugin registration contracts", () => {
-  it("registers 7 lindo tools, 14 commands, 14 skills, 5 hook groups without throwing", async () => {
+  it("registers 7 lindo tools, 15 commands, 14 skills, 5 hook groups without throwing", async () => {
     const { ctx } = mockCtx();
     const runtime = createRuntime(ctx as never, { profile: "public", strictEvidence: true, projectState: ".lindo", model: { providerID: "opencode", modelID: "muse-spark-1.3", defaultVariant: "high" }, telemetry: false } as never);
     const addedTools: string[] = [];
@@ -74,7 +74,7 @@ describe("plugin registration contracts", () => {
     await registerSkills(runtime as LindoRuntime);
     await registerHooks(runtime as LindoRuntime);
     expect(addedTools.sort()).toEqual(["lindo_evaluate_gate", "lindo_handoff", "lindo_record_assumption", "lindo_record_decision", "lindo_request_approval", "lindo_state", "lindo_submit_evidence"]);
-    expect(addedCommands).toHaveLength(14);
+    expect(addedCommands).toHaveLength(15);
     expect(addedSkills).toHaveLength(14);
     // Regression: Skill.Info requires absolute `path` (server disables the
     // plugin on schema mismatch); `location` is not a valid key.

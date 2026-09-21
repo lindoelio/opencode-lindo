@@ -19,7 +19,7 @@ Trivial or fully reversible local choice.
 ## Workflow
 1. List 2-4 viable options with benefits/costs/risks.
 2. Score reversibility (easy/moderate/hard/irreversible) and blast radius.
-3. Recommend one; record approval requirement.
+3. Recommend one; note the guardrail (if any) that would require authorization.
 4. Persist via lindo_record_decision.
 
 ## Output contract

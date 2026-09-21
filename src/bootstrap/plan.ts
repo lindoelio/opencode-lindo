@@ -57,7 +57,7 @@ export async function buildSetupPlan(opts: SetupOptions): Promise<SetupPlan & { 
   } catch (err) {
     warnings.push(`config merge unavailable: ${(err as Error).message}`);
   }
-  if (opts.scope === "global") warnings.push("global scope requires an additional explicit confirmation");
+  if (opts.scope === "global") warnings.push("global scope writes under the global config dir; project config is not touched");
   return { files, configDiff, warnings, root };
 }
 

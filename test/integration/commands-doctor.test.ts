@@ -119,7 +119,7 @@ describe("command handlers", () => {
   it("setup --plan dry-runs, status handles empty state, export previews", async () => {
     const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "lindo-cmd-"));
     const { defs, sent } = await captureCommands(root);
-    expect(defs).toHaveLength(14);
+    expect(defs).toHaveLength(15);
     const setup = defs.find((d) => d.name === "lindo/setup")!;
     await setup.execute({ sessionID: "s", prompt: { text: "/lindo/setup --plan" }, delivery: "steer" } as never);
     expect(sent.join("\n")).toContain("Dry run only");
@@ -155,15 +155,34 @@ describe("command handlers", () => {
     const { readModelRemap } = await import("../../src/bootstrap/jsonc.js");
     expect(await readModelRemap(root)).toEqual({ from: "opencode/muse-spark-1.3", to: "opencode-go/muse-spark-1.3-contributor" });
   });
-  it("global setup without confirm refuses to write, doctor command runs", async () => {
+  it("global setup plans without writing, doctor command runs", async () => {
     const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "lindo-cmd-"));
     const { defs, sent } = await captureCommands(root);
     const setup = defs.find((d) => d.name === "lindo/setup")!;
-    await setup.execute({ sessionID: "s", prompt: { text: "/lindo/setup --apply --scope global" }, delivery: "steer" } as never);
-    expect(sent.join("\n")).toContain("needs --confirm");
+    await setup.execute({ sessionID: "s", prompt: { text: "/lindo/setup --plan --scope global" }, delivery: "steer" } as never);
+    expect(sent.join("\n")).toContain("Lindo setup plan");
     const doctor = defs.find((d) => d.name === "lindo/doctor")!;
     await doctor.execute({ sessionID: "s", prompt: { text: "/lindo/doctor" }, delivery: "steer" } as never);
     expect(sent.join("\n")).toContain("Lindo Doctor");
+  });
+  it("guard command reports and edits guardrails deterministically", async () => {
+    const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "lindo-cmd-"));
+    await initializeState({ projectRoot: root, sessionId: "s", actor: "lindo", outcome: "Win" });
+    const { defs, sent } = await captureCommands(root);
+    const guard = defs.find((d) => d.name === "lindo/guard")!;
+    await guard.execute({ sessionID: "s", prompt: { text: "/lindo/guard" }, delivery: "steer" } as never);
+    expect(sent.join("\n")).toContain("asks nothing by default");
+    await guard.execute({ sessionID: "s", prompt: { text: '/lindo/guard --add "deploy produção"' }, delivery: "steer" } as never);
+    expect(sent.join("\n")).toContain('"deploy produção"');
+    const { readState } = await import("../../src/ledger/store.js");
+    const state = await readState(root);
+    expect(state?.guardrails).toEqual(["deploy produção"]);
+    await guard.execute({ sessionID: "s", prompt: { text: "/lindo/guard --clear" }, delivery: "steer" } as never);
+    expect((await readState(root))?.guardrails).toEqual([]);
+    await guard.execute({ sessionID: "s", prompt: { text: "/lindo/guard --mode guarded" }, delivery: "steer" } as never);
+    expect((await readState(root))?.autonomyMode).toBe("guarded");
+    await guard.execute({ sessionID: "s", prompt: { text: "/lindo/guard --mode nope" }, delivery: "steer" } as never);
+    expect(sent.join("\n")).toContain("Invalid --mode");
   });
   it("loop commands forward structured prompts", async () => {
     const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "lindo-cmd-"));

@@ -4,10 +4,10 @@ import { SKILL_IDS } from "../../src/catalog/skills.js";
 import { AGENT_TEMPLATES } from "../../src/catalog/agents.js";
 
 describe("registration contracts", () => {
-  it("exposes 14 commands", () => {
-    expect(LINDO_COMMANDS).toHaveLength(14);
+  it("exposes 15 commands", () => {
+    expect(LINDO_COMMANDS).toHaveLength(15);
     const names = LINDO_COMMANDS.map((c) => c.name);
-    for (const expected of ["lindo/start", "lindo/discover", "lindo/thesis", "lindo/decide", "lindo/slice", "lindo/build", "lindo/review", "lindo/release", "lindo/status", "lindo/why", "lindo/calibrate", "lindo/setup", "lindo/doctor", "lindo/export"]) {
+    for (const expected of ["lindo/start", "lindo/discover", "lindo/thesis", "lindo/decide", "lindo/slice", "lindo/build", "lindo/review", "lindo/release", "lindo/status", "lindo/why", "lindo/guard", "lindo/calibrate", "lindo/setup", "lindo/doctor", "lindo/export"]) {
       expect(names).toContain(expected);
     }
   });

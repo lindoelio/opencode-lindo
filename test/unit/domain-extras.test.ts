@@ -18,6 +18,7 @@ function baseState(): LindoProjectStateV1 {
     actors: ["user"],
     constraints: ["c1"],
     nonGoals: [],
+    guardrails: [],
     assumptions: [{ id: "ASM-0001", statement: "s", basis: "INFERENCE", confidence: "low", impact: "i", sourceRefs: [] }],
     decisions: [{ id: "DEC-0001", title: "t", context: "c", drivers: ["d"], options: [{ name: "a", benefits: [], costs: [], risks: [] }, { name: "b", benefits: [], costs: [], risks: [] }], decision: "a", rationale: "r", consequences: [], reversibility: "easy", authority: "ALLOW", evidenceRefs: [], createdAt: "t" }],
     risks: [{ id: "R-1", statement: "risk!", severity: "critical" }],
@@ -45,7 +46,7 @@ describe("domain extras", () => {
     expect(p.output_schema).toBe("SpecialistResult@1");
     const text = renderPacketPrompt(p);
     expect(text).toContain("HND-0001");
-    expect(text).toContain("Do not create subagents");
+    expect(text).toContain("never create lindo/* agents");
     expect(() => validateResult({ status: "PASS", summary: "", findings: [], risks: [], unknowns: [], recommended_next_action: "x" })).toThrow();
     expect(() => validateResult({ status: "PASS", summary: "s", findings: [], risks: [], unknowns: [], recommended_next_action: "" })).toThrow();
     validateResult({ status: "ADVISORY", summary: "s", findings: [], risks: [], unknowns: [], recommended_next_action: "x" });

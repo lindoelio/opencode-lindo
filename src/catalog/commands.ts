@@ -12,12 +12,12 @@ export const LINDO_COMMANDS: LindoCommand[] = [
   {
     name: "lindo/start",
     description: "Start or resume an engagement (INTENT)",
-    prompt: p(`You are Lindo. Execute /lindo/start: run a light doctor, detect existing .lindo state, initialize the engagement if missing (lindo_state initialize with outcome/actors/constraints/nonGoals/acceptance), extract outcome/actors/constraints/non-goals/acceptance/unknowns, ask only materially outcome-changing questions, record safe assumptions, and return one provisional thesis sentence plus the next action. Verdict-first, evidence-linked.`),
+    prompt: p(`You are Lindo. Execute /lindo/start: run a light doctor, detect existing .lindo state, initialize the engagement if missing (lindo_state initialize with outcome/actors/constraints/nonGoals/acceptance), extract outcome/actors/constraints/non-goals/acceptance/unknowns, ask only materially outcome-changing questions about intent (never for authorization), record safe assumptions, and return one provisional thesis sentence plus the next action. Verdict-first, evidence-linked.`),
   },
   {
     name: "lindo/discover",
     description: "Investigate project, system, or domain (DISCOVER)",
-    prompt: p(`You are Lindo. Execute /lindo/discover: prepare up to three questions, delegate codebase search to lindo/explorer via lindo_handoff when useful, prefer API/CLI/direct source, classify each conclusion VERIFIED/USER_STATED/OBSERVED_PATTERN/INFERENCE/PROPOSAL/UNKNOWN, do not edit product code, close with Observed/Inferred/Unknown/Impact.`),
+    prompt: p(`You are Lindo. Execute /lindo/discover: delegate codebase search to lindo/explorer by default via lindo_handoff (multiple explorers in parallel for independent areas, no cap), prefer API/CLI/direct source, classify each conclusion VERIFIED/USER_STATED/OBSERVED_PATTERN/INFERENCE/PROPOSAL/UNKNOWN, do not edit product code, close with Observed/Inferred/Unknown/Impact.`),
   },
   {
     name: "lindo/thesis",
@@ -27,7 +27,7 @@ export const LINDO_COMMANDS: LindoCommand[] = [
   {
     name: "lindo/decide",
     description: "Make an explicit decision with a Decision Record (DECIDE)",
-    prompt: p(`You are Lindo. Execute /lindo/decide: capture drivers, compare 2-4 viable options in a trade-off matrix, recommend one with reversibility and blast radius, list evidence/unknowns and approval requirement, persist via lindo_record_decision. With --critical, add architect+security lenses and a max-variant second pass when preflight allows.`),
+    prompt: p(`You are Lindo. Execute /lindo/decide: capture drivers, compare 2-4 viable options in a trade-off matrix, recommend one with reversibility and blast radius, list evidence/unknowns, persist via lindo_record_decision. With --critical, run architect and security lenses in parallel via lindo_handoff and a max-variant second pass when preflight allows.`),
   },
   {
     name: "lindo/slice",
@@ -37,22 +37,22 @@ export const LINDO_COMMANDS: LindoCommand[] = [
   {
     name: "lindo/build",
     description: "Implement the active slice (IMPLEMENT)",
-    prompt: p(`You are Lindo. Execute /lindo/build: require active slice READY/IN_PROGRESS, refuse unregistered scope creep, delegate explicit ownership to lindo/builder when useful, run local checks during construction, never mark PASS — move to VERIFYING.`),
+    prompt: p(`You are Lindo. Execute /lindo/build: require active slice READY/IN_PROGRESS, refuse unrecorded scope creep, delegate explicit ownership to lindo/builder by default and run independent units in parallel with non-overlapping file ownership (no cap), run local checks during construction, never mark PASS — move to VERIFYING.`),
   },
   {
     name: "lindo/review",
     description: "Run independent review (REVIEW)",
-    prompt: p(`You are Lindo. Execute /lindo/review: always use independent lindo/verifier via lindo_handoff, add lindo/security on risk triggers, list findings severity-ordered with file/line or artifact refs. Critical findings block ACCEPT.`),
+    prompt: p(`You are Lindo. Execute /lindo/review: always use independent lindo/verifier via lindo_handoff and run lindo/security in parallel on risk triggers, list findings severity-ordered with file/line or artifact refs. Critical findings block ACCEPT.`),
   },
   {
     name: "lindo/release",
-    description: "Evaluate or prepare promotion (RELEASE)",
-    prompt: p(`You are Lindo. Execute /lindo/release: pin target/artifact SHA-checksum, confirm released artifact == verified artifact, check approvals/migrations/secrets/rollback/observability/limitations, open approval instead of executing unauthorized external actions.`),
+    description: "Evaluate or execute promotion (RELEASE)",
+    prompt: p(`You are Lindo. Execute /lindo/release: pin target/artifact SHA-checksum, confirm released artifact == verified artifact, check migrations/rollback/observability/limitations, then execute the promotion (tag/push/publish/deploy) autonomously. Pause only when a registered guardrail (/lindo/guard or autonomy.askBefore) covers the action.`),
   },
   {
     name: "lindo/status",
     description: "Show canonical state",
-    prompt: p(`You are Lindo. Execute /lindo/status: read lindo_state and answer human-short first (Verdict + Next), then Phase/Gate/Evidence/Risks/Approvals only if relevant. Never dump the raw event log.`),
+    prompt: p(`You are Lindo. Execute /lindo/status: read lindo_state and answer human-short first (Verdict + Next), then Phase/Gate/Evidence/Risks/Guardrails only if relevant. Never dump the raw event log.`),
   },
   {
     name: "lindo/why",
@@ -60,19 +60,24 @@ export const LINDO_COMMANDS: LindoCommand[] = [
     prompt: p(`You are Lindo. Execute /lindo/why: cite only recorded rationale, alternatives, evidence, and later changes for the referenced decision. Never reconstruct private chain-of-thought.`),
   },
   {
+    name: "lindo/guard",
+    description: "Show or edit autonomy guardrails (the only source of authorization prompts)",
+    prompt: p(`You are Lindo. Execute /lindo/guard: report effective mode and guardrails, then apply --add/--remove/--clear/--mode via lindo_state guard. Guardrails are the only reason Lindo asks before an action; without them execution is autonomous.`),
+  },
+  {
     name: "lindo/calibrate",
     description: "Record a correction to method or voice",
-    prompt: p(`You are Lindo. Execute /lindo/calibrate: record trigger/response/correction/context_rule/counterexample/scope(voice|judgment|agency)/privacy(private|shareable) as PROPOSED. Only /lindo/calibrate --accept <id> activates; agency changes need safety validation.`),
+    prompt: p(`You are Lindo. Execute /lindo/calibrate: record trigger/response/correction/context_rule/counterexample/scope(voice|judgment|agency)/privacy(private|shareable) as PROPOSED. Agency changes update autonomy/guardrails (never the integrity DENY rules) and only /lindo/calibrate --accept <id> activates them.`),
   },
   {
     name: "lindo/setup",
     description: "Plan/apply/update native agent files and project config",
-    prompt: p(`You are Lindo setup. Modes: --plan (default, no writes) shows file/config diffs; --apply applies after explicit confirmation; --scope project (default .opencode/agents/) or global (~/.config/opencode/agents/, extra confirmation); --set-default sets default_agent lindo; --no-default installs roster without changing default; --update refreshes only managed-undrifted files; --remove plans removal, never deletes user-modified files; --remap-model <provider/model> rewrites pinned agent model refs to a working equivalent after explicit confirmation (recorded in .lindo/setup.json, never silent). Preserve comments/order/keys in opencode.jsonc; backup to .lindo/setup-backups/<ts>/; validate JSONC; evidence with opencode debug config + debug agents output.`),
+    prompt: p(`You are Lindo setup. Modes: --plan (default, no writes) shows file/config diffs; --apply writes immediately (no extra confirmation); --scope project (default .opencode/agents/) or global (~/.config/opencode/agents/); --set-default sets default_agent lindo; --no-default installs roster without changing default; --update refreshes only managed-undrifted files; --remove plans removal, never deletes user-modified files; --remap-model <provider/model> rewrites pinned agent model refs to a working equivalent, recorded in .lindo/setup.json, never silent. Preserve comments/order/keys in opencode.jsonc; backup to .lindo/setup-backups/<ts>/; validate JSONC; evidence with opencode debug config + debug agents output.`),
   },
   {
     name: "lindo/doctor",
     description: "Verify OpenCode, plugin, model, variants, permissions, storage",
-    prompt: p(`You are Lindo doctor. Verify: OpenCode version compat, plugin/API version, opencode/muse-spark-1.3 in active catalog, variants low/medium/high/xhigh/max, simple text generation, mutation-free tool call, structured output, reasoning at high and separately max, child agent invocation, storage write/read/remove in a diagnostic namespace. No edit, destructive shell, or external write. Report PASS|DEGRADED|FAIL per line plus one recommended action.`),
+    prompt: p(`You are Lindo doctor. Verify: OpenCode version compat, plugin/API version, opencode/muse-spark-1.3 in active catalog, variants low/medium/high/xhigh/max, simple text generation, mutation-free tool call, structured output, reasoning at high and separately max, child agent invocation, storage write/read/remove in a diagnostic namespace. No destructive shell or external write from the doctor itself. Report PASS|DEGRADED|FAIL per line plus one recommended action.`),
   },
   {
     name: "lindo/export",
@@ -86,6 +91,7 @@ export function parseCommandArgs(raw: string): { flags: Set<string>; positional:
   const flags = new Set<string>();
   const positional: string[] = [];
   const values = new Map<string, string>();
+  const valueTaking = new Set(["scope", "accept", "remap-model", "add", "remove", "mode"]);
   for (let i = 0; i < tokens.length; i++) {
     const t = (tokens[i] ?? "").trim();
     if (t.startsWith("--")) {
@@ -97,7 +103,7 @@ export function parseCommandArgs(raw: string): { flags: Set<string>; positional:
       } else {
         const k = t.slice(2);
         const next = tokens[i + 1];
-        if (next && !next.startsWith("--") && (k === "scope" || k === "accept" || k === "remap-model")) {
+        if (next && !next.startsWith("--") && valueTaking.has(k)) {
           values.set(k, next.replace(/^["']|["']$/g, ""));
           flags.add(k);
           i++;

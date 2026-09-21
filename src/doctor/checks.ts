@@ -25,7 +25,7 @@ export interface DoctorReport {
   remediation?: ModelRemediation;
 }
 
-const PLUGIN_VERSION = "0.1.3";
+const PLUGIN_VERSION = "0.2.0";
 
 export async function runDoctor(runtime: LindoRuntime): Promise<DoctorReport> {
   const checks: DoctorCheck[] = [];
@@ -40,6 +40,16 @@ export async function runDoctor(runtime: LindoRuntime): Promise<DoctorReport> {
 
   // 2. Plugin/API version
   checks.push({ name: "Plugin", status: "PASS", detail: PLUGIN_VERSION });
+
+  // 2b. Autonomy policy (informational, always PASS)
+  const autonomy = runtime.options.autonomy ?? { mode: "yolo" as const, askBefore: [] as string[] };
+  checks.push({
+    name: "Autonomy",
+    status: "PASS",
+    detail: autonomy.mode === "yolo"
+      ? `yolo — external/destructive/production actions execute without asking${autonomy.askBefore.length > 0 ? `; askBefore: ${autonomy.askBefore.join("; ")}` : "; no guardrails registered"}`
+      : `guarded — external/destructive/outside-slice actions require approval${autonomy.askBefore.length > 0 ? `; askBefore: ${autonomy.askBefore.join("; ")}` : ""}`,
+  });
 
   // 3-4. Model catalog + variants. A missing pinned model is DEGRADED (not
   // FAIL) when a same-family equivalent exists: doctor proposes an explicit

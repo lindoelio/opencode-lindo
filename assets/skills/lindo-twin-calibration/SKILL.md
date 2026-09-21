@@ -19,7 +19,7 @@ User asks for a factual task.
 ## Workflow
 1. Record trigger/response/correction + context_rule + counterexample + scope (voice|judgment|agency) + privacy.
 2. Status PROPOSED; only /lindo/calibrate --accept activates.
-3. Agency changes pass safety validation; never remove Constitution or weaken gates.
+3. Agency changes adjust autonomy/guardrails; never remove Constitution or weaken integrity DENY rules.
 
 ## Output contract
 Calibration Proposal.

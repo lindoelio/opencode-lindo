@@ -4,7 +4,7 @@
   "title": "LindoProjectStateV1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "revision", "project", "engagement", "outcome", "actors", "constraints", "nonGoals", "assumptions", "decisions", "risks", "gates", "evidence", "approvals", "handoffs", "nextAction", "modelProfile"],
+  "required": ["schemaVersion", "revision", "project", "engagement", "outcome", "actors", "constraints", "nonGoals", "guardrails", "assumptions", "decisions", "risks", "gates", "evidence", "approvals", "handoffs", "nextAction", "modelProfile"],
   "properties": {
     "schemaVersion": { "const": 1 },
     "revision": { "type": "integer", "minimum": 0 },
@@ -47,6 +47,8 @@
     "actors": { "type": "array", "items": { "type": "string" } },
     "constraints": { "type": "array", "items": { "type": "string" } },
     "nonGoals": { "type": "array", "items": { "type": "string" } },
+    "guardrails": { "type": "array", "items": { "type": "string" } },
+    "autonomyMode": { "enum": ["yolo", "guarded"] },
     "assumptions": { "type": "array", "items": { "type": "object" } },
     "decisions": { "type": "array", "items": { "type": "object" } },
     "activeSlice": { "type": "object" },

@@ -201,6 +201,10 @@ export const LindoProjectStateSchema = z.object({
   actors: z.array(z.string()),
   constraints: z.array(z.string()),
   nonGoals: z.array(z.string()),
+  /** User-registered guardrails: patterns that require asking before matching actions. Empty = nothing is asked. */
+  guardrails: z.array(z.string()).default([]),
+  /** State-level override for autonomy. Falls back to plugin options (`yolo` by default). */
+  autonomyMode: z.enum(["yolo", "guarded"]).optional(),
   assumptions: z.array(AssumptionRefSchema),
   decisions: z.array(DecisionRefSchema),
   activeSlice: SliceRefSchema.optional(),
@@ -262,7 +266,17 @@ export const StateTransitionInput = z
     nextAction: z.string().min(1),
   })
   .strict();
-export const LindoStateInputSchema = z.union([StateReadInput, StateInitInput, StateTransitionInput]);
+export const StateGuardInput = z
+  .object({
+    action: z.literal("guard"),
+    expectedRevision: z.number().int().min(0),
+    mode: z.enum(["yolo", "guarded"]).optional(),
+    add: z.array(z.string()).optional(),
+    remove: z.array(z.string()).optional(),
+    clear: z.boolean().optional(),
+  })
+  .strict();
+export const LindoStateInputSchema = z.union([StateReadInput, StateInitInput, StateTransitionInput, StateGuardInput]);
 
 export const RecordAssumptionInputSchema = z
   .object({

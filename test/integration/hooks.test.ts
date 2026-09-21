@@ -66,19 +66,20 @@ describe("hooks", () => {
     const sys = (primary as { system: Array<{ text: string }> }).system;
     expect(sys.length).toBeGreaterThanOrEqual(2);
     expect((primary as { options: Record<string, unknown> }).options["reasoningEffort"]).toBe("high");
-    // explorer loses edit/shell/subagent
+    // explorer stays read-only but keeps the subagent tool (built-in helpers)
     const explorer = { agent: "lindo/explorer", system: [] as unknown[], options: {} as Record<string, unknown>, tools: { edit: {}, shell: {}, subagent: {}, read: {} } } as never;
     await cbs[0]!(explorer);
     const tools = (explorer as { tools: Record<string, unknown> }).tools;
     expect(tools["edit"]).toBeUndefined();
-    expect(tools["subagent"]).toBeUndefined();
+    expect(tools["shell"]).toBeUndefined();
+    expect(tools["subagent"]).toBeDefined();
     expect(tools["read"]).toBeDefined();
     expect((explorer as { options: Record<string, unknown> }).options["reasoningEffort"]).toBe("low");
     // unknown lindo/* role falls back to the default variant without throwing
     const custom = { agent: "lindo/custom", system: [] as unknown[], options: {} as Record<string, unknown>, tools: { subagent: {}, edit: {} } } as never;
     await cbs[0]!(custom);
     expect((custom as { options: Record<string, unknown> }).options["reasoningEffort"]).toBe("high");
-    expect((custom as { tools: Record<string, unknown> }).tools["subagent"]).toBeUndefined();
+    expect((custom as { tools: Record<string, unknown> }).tools["subagent"]).toBeDefined();
     await reg.dispose();
   });
   it("context hook degrades gracefully when storage throws", async () => {
@@ -90,8 +91,10 @@ describe("hooks", () => {
     const reg = await registerContextHook(runtime);
     const evt = { agent: "lindo", system: [] as unknown[], options: {} as Record<string, unknown>, tools: {} } as never;
     await cap.sessionHooks["context"]![0]!(evt);
-    // constitution line still injected; projection skipped
-    expect((evt as { system: unknown[] }).system).toHaveLength(1);
+    // constitution + primary contract still injected; projection skipped
+    const system = (evt as { system: Array<{ text: string }> }).system;
+    expect(system.length).toBeGreaterThanOrEqual(1);
+    expect(system[0]?.text).toContain("Lindo Constitution");
     await reg.dispose();
   });
   it("prompt hook redacts secrets and tags steering/injection", async () => {
@@ -109,44 +112,53 @@ describe("hooks", () => {
     await cb(evil);
     expect((evil as unknown as { metadata: Record<string, unknown> }).metadata["lindoUntrusted"]).toBe(true);
   });
-  it("permission hook enforces DENY, elevates ASK, honors approvals, fails closed", async () => {
+  it("permission hook defaults to ALLOW, honors guardrails and approvals, keeps DENY final", async () => {
     const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "lindo-hook-"));
     await initializeState({ projectRoot: root, sessionId: "s", actor: "lindo", outcome: "O" });
     const cap = freshCap();
     const runtime = createRuntime(mockHookCtx(root, cap), OPTS);
     await registerPermissionHook(runtime);
     const cb = cap.permissionHooks[0]!;
-    // DENY final
+    // DENY integrity is final
     const deny = { action: "secret-expose", resources: [], effect: "allow" } as never;
     await cb(deny);
     expect((deny as unknown as { effect: string }).effect).toBe("deny");
-    // external write elevated to ask
+    // yolo: external/destructive actions stay allow, no elevation
     const push = { action: "git-push", resources: ["origin"], effect: "allow" } as never;
     await cb(push);
-    expect((push as unknown as { effect: string }).effect).toBe("ask");
-    // storage failure keeps ask (fail closed)
-    cap.failStorage = true;
-    const push2 = { action: "git-push", resources: ["origin"], effect: "allow" } as never;
-    await cb(push2);
-    expect((push2 as unknown as { effect: string }).effect).toBe("ask");
-    cap.failStorage = false;
-    // exact matching approval satisfies a previous ask
-    const { appendEvent, storeContext } = await import("../../src/ledger/store.js");
-    await appendEvent(storeContext(root, "s", "lindo"), "approval.opened", { id: "APR-0001" }, (s) => ({
-      ...s,
-      approvals: [...s.approvals, { id: "APR-0001", category: "external_write" as const, requestedAction: "git-push", resources: ["origin"], reason: "needed", risks: [], status: "approved" as const, createdAt: new Date().toISOString() }],
-    }));
-    const push3 = { action: "git-push", resources: ["origin"], effect: "allow" } as never;
-    await cb(push3);
-    expect((push3 as unknown as { effect: string }).effect).toBe("allow");
-    expect(isValidationSafe("npm test -- run")).toBe(true);
-    expect(isValidationSafe("git push origin main")).toBe(false);
-    expect(isValidationSafe("rm -rf /")).toBe(false);
-    // preset ask with preset message keeps its message when no approval matches
+    expect((push as unknown as { effect: string }).effect).toBe("allow");
+    const destructive = { action: "destructive", resources: ["prod-db"], effect: "allow" } as never;
+    await cb(destructive);
+    expect((destructive as unknown as { effect: string }).effect).toBe("allow");
+    // a preset ask keeps its message when no approval matches
     const preset = { action: "read", resources: ["src/x.ts"], effect: "ask", message: "preset" } as never;
     await cb(preset);
     expect((preset as unknown as { effect: string; message: string }).effect).toBe("ask");
     expect((preset as unknown as { effect: string; message: string }).message).toBe("preset");
+    // state guardrail turns deploy into ask, and an exact approval satisfies it
+    const { appendEvent, storeContext } = await import("../../src/ledger/store.js");
+    await appendEvent(storeContext(root, "s", "lindo"), "guardrails.updated", { add: ["deploy"] }, (s) => ({
+      ...s,
+      guardrails: [...s.guardrails, "deploy"],
+    }));
+    const deploy = { action: "deploy", resources: ["staging"], effect: "allow" } as never;
+    await cb(deploy);
+    expect((deploy as unknown as { effect: string }).effect).toBe("ask");
+    await appendEvent(storeContext(root, "s", "lindo"), "approval.opened", { id: "APR-0001" }, (s) => ({
+      ...s,
+      approvals: [...s.approvals, { id: "APR-0001", category: "release" as const, requestedAction: "deploy", resources: ["staging"], reason: "needed", risks: [], status: "approved" as const, createdAt: new Date().toISOString() }],
+    }));
+    const deploy2 = { action: "deploy", resources: ["staging"], effect: "allow" } as never;
+    await cb(deploy2);
+    expect((deploy2 as unknown as { effect: string }).effect).toBe("allow");
+    // state-level guarded mode restores legacy elevation for new actions
+    await appendEvent(storeContext(root, "s", "lindo"), "guardrails.updated", { mode: "guarded" }, (s) => ({ ...s, autonomyMode: "guarded" as const }));
+    const push2 = { action: "git-push", resources: ["origin"], effect: "allow" } as never;
+    await cb(push2);
+    expect((push2 as unknown as { effect: string }).effect).toBe("ask");
+    expect(isValidationSafe("npm test -- run")).toBe(true);
+    expect(isValidationSafe("git push origin main")).toBe(false);
+    expect(isValidationSafe("rm -rf /")).toBe(false);
   });
   it("retry hook only retries transient failures", async () => {
     const cap = freshCap();

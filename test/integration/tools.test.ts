@@ -16,7 +16,7 @@ import { projectRootOf } from "../../src/runtime.js";
 function runtimeFor(root: string): LindoRuntime {
   return createRuntime(
     { location: { project: { canonical: root } }, options: {} } as never,
-    { profile: "public", strictEvidence: true, projectState: ".lindo", model: { providerID: "opencode", modelID: "muse-spark-1.3", defaultVariant: "high" }, telemetry: false, allowVariantFallback: false },
+    { profile: "public", strictEvidence: true, projectState: ".lindo", model: { providerID: "opencode", modelID: "muse-spark-1.3", defaultVariant: "high" }, telemetry: false, allowVariantFallback: false, autonomy: { mode: "yolo", askBefore: [] } },
   );
 }
 
@@ -65,6 +65,23 @@ describe("lindo tools end to end", () => {
     const moved = JSON.parse((await executeState(runtime, { action: "transition", expectedRevision: 0, to: "DISCOVER", reason: "start", nextAction: "discover" }, tool)).content);
     expect(moved.state.engagement.phase).toBe("DISCOVER");
     await expect(executeState(runtime, { action: "nope" }, tool)).rejects.toThrow();
+  });
+  it("state guard: registers guardrails and mode without touching default autonomy", async () => {
+    const { runtime } = await freshRuntime();
+    await executeState(runtime, { action: "initialize", outcome: "O" }, tool);
+    const initial = JSON.parse((await executeState(runtime, { action: "read" }, tool)).content);
+    expect(initial.state.guardrails).toEqual([]);
+    const added = JSON.parse((await executeState(runtime, { action: "guard", expectedRevision: 0, add: ["deploy produção"] }, tool)).content);
+    expect(added.guardrails).toEqual(["deploy produção"]);
+    expect(added.mode).toBe("yolo");
+    expect(added.note).toContain("require explicit authorization");
+    const removed = JSON.parse((await executeState(runtime, { action: "guard", expectedRevision: 1, remove: ["deploy produção"], mode: "guarded" }, tool)).content);
+    expect(removed.guardrails).toEqual([]);
+    expect(removed.mode).toBe("guarded");
+    expect(removed.note).toContain("require explicit authorization");
+    const cleared = JSON.parse((await executeState(runtime, { action: "guard", expectedRevision: 2, add: ["x"], mode: "yolo" }, tool)).content);
+    expect(cleared.mode).toBe("yolo");
+    await expect(executeState(runtime, { action: "guard", expectedRevision: 0, add: ["y"] }, tool)).rejects.toThrow(/stale/);
   });
   it("assumption: records and enforces revision", async () => {
     const { runtime } = await freshRuntime();
@@ -212,12 +229,14 @@ describe("lindo tools end to end", () => {
     expect(gateAfterPrepare.result).toBe("PASS");
     await executeHandoff(runtime, { action: "prepare", expectedRevision: 2, ...base }, tool);
     await executeHandoff(runtime, { action: "prepare", expectedRevision: 3, ...base }, tool);
-    await expect(executeHandoff(runtime, { action: "prepare", expectedRevision: 4, ...base }, tool)).rejects.toThrow(/max 3 concurrent/);
-    const done = JSON.parse((await executeHandoff(runtime, { action: "complete", expectedRevision: 4, handoffId: "HND-0001", result: { status: "PASS", summary: "mapped", findings: [], risks: [], unknowns: [], recommended_next_action: "build" } }, tool)).content);
-    expect(done.revision).toBe(5);
-    await expect(executeHandoff(runtime, { action: "complete", expectedRevision: 5, handoffId: "HND-9999", result: { status: "PASS", summary: "s", findings: [], risks: [], unknowns: [], recommended_next_action: "x" } }, tool)).rejects.toThrow(/unknown handoff/);
-    const cancelled = JSON.parse((await executeHandoff(runtime, { action: "cancel", expectedRevision: 5, handoffId: "HND-0002", reason: "dup" }, tool)).content);
+    // no concurrency cap: a fourth parallel handoff is allowed
+    const p4 = JSON.parse((await executeHandoff(runtime, { action: "prepare", expectedRevision: 4, ...base }, tool)).content);
+    expect(p4.id).toBe("HND-0004");
+    const done = JSON.parse((await executeHandoff(runtime, { action: "complete", expectedRevision: 5, handoffId: "HND-0001", result: { status: "PASS", summary: "mapped", findings: [], risks: [], unknowns: [], recommended_next_action: "build" } }, tool)).content);
+    expect(done.revision).toBe(6);
+    await expect(executeHandoff(runtime, { action: "complete", expectedRevision: 6, handoffId: "HND-9999", result: { status: "PASS", summary: "s", findings: [], risks: [], unknowns: [], recommended_next_action: "x" } }, tool)).rejects.toThrow(/unknown handoff/);
+    const cancelled = JSON.parse((await executeHandoff(runtime, { action: "cancel", expectedRevision: 6, handoffId: "HND-0002", reason: "dup" }, tool)).content);
     expect(cancelled.id).toBe("HND-0002");
-    await expect(executeHandoff(runtime, { action: "cancel", expectedRevision: 6, handoffId: "HND-9999", reason: "x" }, tool)).rejects.toThrow(/unknown handoff/);
+    await expect(executeHandoff(runtime, { action: "cancel", expectedRevision: 7, handoffId: "HND-9999", reason: "x" }, tool)).rejects.toThrow(/unknown handoff/);
   });
 });

@@ -140,6 +140,7 @@ export async function initializeState(input: {
       actors: input.actors ?? [],
       constraints: input.constraints ?? [],
       nonGoals: input.nonGoals ?? [],
+      guardrails: [],
       assumptions: [],
       decisions: [],
       risks: [],

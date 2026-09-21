@@ -58,7 +58,8 @@ export function renderPacketPrompt(p: HandoffPacket): string {
     `Required evidence: ${p.required_evidence.join(" | ") || "(none)"}`,
     `Stop when: ${p.stop_condition}`,
     `Return SpecialistResult@1 JSON: status PASS|FAIL|BLOCKED|ADVISORY, summary, findings[{severity,claim,evidence}], risks, unknowns, recommended_next_action.`,
-    `Do not create subagents. Do not claim completion without evidence.`,
+    `Act autonomously; do not ask for authorization unless a registered guardrail covers the action.`,
+    `You may launch built-in OpenCode helper agents (e.g. explore, general); never create lindo/* agents. Do not claim completion without evidence.`,
   ].join("\n");
 }
 

@@ -7,7 +7,7 @@ import type { ToolContext } from "@opencode/plugin/promise/tool";
 
 export const HANDOFF_TOOL = {
   name: "handoff",
-  description: "Prepare/complete/cancel a bounded specialist handoff (prepare returns the prompt packet; it does not fake execution)",
+  description: "Prepare/complete/cancel a bounded specialist handoff. Launch as many in parallel as useful (no cap). prepare returns the prompt packet; it does not fake execution",
   input: {
     type: "object",
     properties: {
@@ -49,9 +49,7 @@ export async function executeHandoff(runtime: LindoRuntime, rawInput: unknown, t
   void HANDOFF_ROLES;
 
   if (input.action === "prepare") {
-    // Concurrency guard: max 3 open handoffs.
-    const open = current.handoffs.filter((h) => h.status === "prepared");
-    if (open.length >= 3) throw new Error("max 3 concurrent handoffs; complete or cancel one first");
+    // No concurrency cap: independent work is encouraged to run in parallel.
     const id = handoffId(current.handoffs.length + 1);
     const record = {
       id,

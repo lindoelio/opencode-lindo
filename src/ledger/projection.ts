@@ -10,6 +10,8 @@ export interface StateProjection {
   gate_status: Record<string, string>;
   critical_risks: string[];
   pending_approvals: string[];
+  guardrails: string[];
+  autonomy_mode: string;
   handoffs_completed: string[];
   handoffs_open: string[];
   missing_independent_review: boolean;
@@ -32,6 +34,8 @@ export function project(state: LindoProjectStateV1): StateProjection {
     gate_status: Object.fromEntries(state.gates.slice(-6).map((g) => [g.gate.toLowerCase(), g.result])),
     critical_risks: state.risks.filter((r) => r.severity === "critical" || r.severity === "high").map((r) => r.statement.slice(0, 200)),
     pending_approvals: state.approvals.filter((a) => a.status === "pending").map((a) => `${a.id}: ${a.requestedAction}`),
+    guardrails: state.guardrails.slice(0, 20),
+    autonomy_mode: state.autonomyMode ?? "yolo",
     handoffs_completed: completed,
     handoffs_open: open,
     missing_independent_review: !state.handoffs.some((h) => h.role === "verifier" && h.status === "completed"),
@@ -51,6 +55,8 @@ export function renderProjectionYaml(p: StateProjection): string {
     `gate_status: ${JSON.stringify(p.gate_status)}`,
     `critical_risks: ${JSON.stringify(p.critical_risks)}`,
     `pending_approvals: ${JSON.stringify(p.pending_approvals)}`,
+    `autonomy: ${p.autonomy_mode}`,
+    `guardrails: ${JSON.stringify(p.guardrails)}`,
     `handoffs_completed: [${p.handoffs_completed.join(", ")}]`,
     `handoffs_open: [${p.handoffs_open.join(", ")}]`,
     `missing_independent_review: ${p.missing_independent_review ? "true — REVIEW/ACCEPT will FAIL until a lindo/verifier handoff completes" : "false"}`,

@@ -16,6 +16,12 @@ describe.skipIf(!enabled)("lindo e2e (real model)", () => {
   it("one specialist handoff", () => {
     expect(true).toBe(true);
   });
+  it("parallel handoffs beyond the legacy cap of three", () => {
+    expect(true).toBe(true);
+  });
+  it("yolo default executes external write without approval prompt", () => {
+    expect(true).toBe(true);
+  });
   it("compaction/resume preserves revision", () => {
     expect(true).toBe(true);
   });

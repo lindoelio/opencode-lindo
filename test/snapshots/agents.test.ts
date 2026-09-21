@@ -25,9 +25,11 @@ describe("agent asset snapshots", () => {
     expect(fm["mode"]).toBe("primary");
     expect(fm["model"]).toBe("opencode/muse-spark-1.3#high");
     const body = fs.readFileSync(path.join(ROOT, "lindo.md"), "utf8");
-    expect(body).toContain('resource: "lindo/*"');
+    expect(body).toContain('resource: "*"');
+    expect(body).toContain("effect: allow");
+    expect(body).not.toContain("effect: ask");
   });
-  it("all specialists are subagents with pinned variants and no-delegation tails", () => {
+  it("specialists are subagents that may launch built-ins but never lindo/*", () => {
     const expected: Record<string, string> = {
       explorer: "opencode/muse-spark-1.3#low",
       product: "opencode/muse-spark-1.3#high",
@@ -44,7 +46,9 @@ describe("agent asset snapshots", () => {
       expect(fm["model"]).toBe(model);
       const body = fs.readFileSync(path.join(ROOT, "lindo", `${name}.md`), "utf8");
       expect(body).toContain('resource: "*"');
+      expect(body).toContain('resource: "lindo/*"');
       expect(body).toContain("effect: deny");
+      expect(body).not.toContain("effect: ask");
     }
   });
   it("templates stay pure (no marker); the marker is added trailing at apply time", () => {

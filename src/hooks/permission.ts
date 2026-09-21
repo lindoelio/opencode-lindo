@@ -1,12 +1,17 @@
-import { approvalSatisfies, classifyAuthority } from "../domain/authority.js";
+import { approvalSatisfies, classifyAuthority, classifyGuarded, matchesGuardrail } from "../domain/authority.js";
 import { readState } from "../ledger/store.js";
 import { projectRootOf, type LindoRuntime } from "../runtime.js";
 
 /**
- * permission.evaluate: deterministic Authority Matrix after configured rules.
- * Explicit deny is final (hook never runs for it). May elevate allow->ask for
- * external/destructive/outside-slice; may allow a previous ask only with an
- * exact, valid, matching approval.
+ * permission.evaluate: YOLO by default.
+ *
+ * - ALLOW is the baseline, including external, destructive, production,
+ *   financial and legal actions. The hook does not elevate allow -> ask.
+ * - ASK is produced only by (a) user-registered guardrails
+ *   (`autonomy.askBefore`, `/lindo/guard`) or (b) `autonomy.mode: "guarded"`
+ *   (legacy opt-in behavior). State-level settings override plugin options.
+ * - DENY integrity rules are final and are never weakened.
+ * - A previously asked action is allowed only with an exact, current approval.
  */
 export async function registerPermissionHook(runtime: LindoRuntime): Promise<{ dispose: () => Promise<void> }> {
   const reg = await runtime.ctx.permission.hook("evaluate", async (event: any) => {
@@ -19,13 +24,35 @@ export async function registerPermissionHook(runtime: LindoRuntime): Promise<{ d
     const isDestructive = /delete|destroy|drop|rm\s+-rf|production|billing|permission|destructive/i.test(`${action} ${resourceText}`);
     const isOutsideSlice = /outside|out-of-scope|\.\.\//i.test(resourceText);
 
-    const verdict = classifyAuthority({ action, resource: resources[0], role: agent as string, isExternal, isDestructive, isOutsideSlice });
+    // Effective autonomy: state overrides plugin options.
+    let mode = runtime.options.autonomy?.mode ?? "yolo";
+    let guardrails = [...(runtime.options.autonomy?.askBefore ?? [])];
+    try {
+      const root = projectRootOf(runtime.ctx);
+      const state = await readState(root);
+      if (state) {
+        guardrails = [...guardrails, ...state.guardrails];
+        if (state.autonomyMode) mode = state.autonomyMode;
+      }
+    } catch {
+      // storage failure: fall back to option-level configuration
+    }
+
+    const query = { action, resource: resources[0], role: agent, isExternal, isDestructive, isOutsideSlice };
+    const verdict = mode === "guarded" ? classifyGuarded(query) : classifyAuthority(query);
+
     if (verdict.effect === "DENY") {
       event.effect = "deny";
       event.message = `Lindo DENY: ${verdict.reason}`;
       return;
     }
-    if (verdict.effect === "ASK" && event.effect === "allow") {
+
+    // Guardrails are the only source of ASK in yolo mode.
+    const matched = matchesGuardrail(guardrails, action, resources);
+    if (matched && event.effect === "allow") {
+      event.effect = "ask";
+      event.message = `Lindo ASK (guardrail "${matched}"): ${`${action} ${resourceText}`.trim()}`;
+    } else if (verdict.effect === "ASK" && event.effect === "allow") {
       event.effect = "ask";
       event.message = `Lindo ASK: ${verdict.reason}`;
     }
@@ -48,7 +75,7 @@ export async function registerPermissionHook(runtime: LindoRuntime): Promise<{ d
       } catch {
         // storage failure: fail closed, keep ask
       }
-      if (!event.message) event.message = `Lindo: ${verdict.reason}`;
+      if (!event.message) event.message = "Lindo: explicit authorization required";
     }
   });
   return { dispose: () => reg.dispose() };

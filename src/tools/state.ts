@@ -6,11 +6,12 @@ import type { ToolContext } from "@opencode/plugin/promise/tool";
 
 export const LINDO_STATE_TOOL = {
   name: "state",
-  description: "Initialize, read, or transition the Lindo engagement (optimistic revision, state machine validated)",
+  description:
+    "Initialize, read, transition, or register guardrails for the Lindo engagement (optimistic revision, state machine validated). Guardrails are the only mechanism that makes Lindo ask before an action; the default is autonomous execution.",
   input: {
     type: "object",
     properties: {
-      action: { type: "string", enum: ["read", "initialize", "transition"] },
+      action: { type: "string", enum: ["read", "initialize", "transition", "guard"] },
       outcome: { type: "string" },
       actors: { type: "array", items: { type: "string" } },
       constraints: { type: "array", items: { type: "string" } },
@@ -20,6 +21,10 @@ export const LINDO_STATE_TOOL = {
       to: { type: "string" },
       reason: { type: "string" },
       nextAction: { type: "string" },
+      mode: { type: "string", enum: ["yolo", "guarded"] },
+      add: { type: "array", items: { type: "string" } },
+      remove: { type: "array", items: { type: "string" } },
+      clear: { type: "boolean" },
     },
     required: ["action"],
     additionalProperties: false,
@@ -52,15 +57,39 @@ export async function executeState(runtime: LindoRuntime, rawInput: unknown, too
     });
     return toolOk({ initialized: true, state });
   }
-  // transition
   const current = await readState(projectRoot);
   if (!current) throw new Error("lindo state not initialized");
   if (input.expectedRevision !== current.revision) {
     throw new Error(`stale revision: expected ${input.expectedRevision}, actual ${current.revision}`);
   }
+  const ctx = storeContext(projectRoot, sessionId, agent);
+
+  if (input.action === "guard") {
+    const next = await appendEvent(ctx, "guardrails.updated", {
+      mode: input.mode,
+      add: input.add ?? [],
+      remove: input.remove ?? [],
+      clear: input.clear === true,
+    }, (s) => {
+      let guardrails = [...s.guardrails];
+      if (input.clear === true) guardrails = [];
+      if (input.remove && input.remove.length > 0) guardrails = guardrails.filter((g) => !input.remove!.includes(g));
+      if (input.add && input.add.length > 0) guardrails = [...new Set([...guardrails, ...input.add])];
+      return { ...s, guardrails, ...(input.mode ? { autonomyMode: input.mode } : {}) };
+    });
+    return toolOk({
+      guardrails: next.guardrails,
+      mode: next.autonomyMode ?? runtime.options.autonomy?.mode ?? "yolo",
+      note: next.guardrails.length === 0 && (next.autonomyMode ?? runtime.options.autonomy?.mode ?? "yolo") === "yolo"
+        ? "No guardrails: Lindo asks nothing and executes autonomously."
+        : "Matching actions now require explicit authorization.",
+      revision: next.revision,
+    });
+  }
+
+  // transition
   validatePhaseTransition(current.engagement.phase, input.to);
   const nextStatus = statusForPhase(input.to);
-  const ctx = storeContext(projectRoot, sessionId, agent);
   const next = await appendEvent(ctx, "phase.transitioned", { from: current.engagement.phase, to: input.to, reason: input.reason }, (s) => ({
     ...s,
     engagement: { ...s.engagement, phase: input.to, status: nextStatus },
